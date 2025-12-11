@@ -1,0 +1,77 @@
+@startuml
+skinparam dpi 150
+title Ultra-Production Modular FastAPI Architecture
+
+package "Ingress / Edge" {
+  [CDN] --> [API Gateway / WAF]
+  [API Gateway / WAF] --> [BFF / API Gateway]
+}
+
+package "Kubernetes Cluster" {
+  package "Platform" {
+    component "Ingress Controller\n(Traefik/NGINX)" as ingress
+    component "Service Mesh\n(Istio/Linkerd)" as mesh
+    component "Cert Manager\n(LetsEncrypt)" as cert
+    component "Secrets Manager\n(Vault)" as vault
+    component "ArgoCD / Flux\n(GitOps)" as gitops
+    component "Prometheus\n+Grafana" as prometheus
+    component "Jaeger / OTEL\nTracing" as jaeger
+    component "Loki / EFK\nLogging" as logging
+  }
+
+  package "Microservices / Modules" {
+    node "auth-svc\n(Keycloak or internal)\nFastAPI" as auth
+    node "users-svc\nFastAPI" as users
+    node "orders-svc\nFastAPI" as orders
+    node "products-svc\nFastAPI" as products
+    node "notifications-svc\nFastAPI" as notify
+    node "payments-svc\nFastAPI" as payments
+    node "bff-web\nFastAPI/Node\n(Per frontend)" as bff
+  }
+
+  package "Data & Infra" {
+    database "Postgres (stateful)\n(one per bounded context)" as pg
+    database "Event broker\nKafka / RabbitMQ" as broker
+    database "Redis\n(cache + rate-limiting + streams)" as redis
+    storage "S3-compatible\n(object storage)" as s3
+    component "Schema Registry\n(Avro/Confluent)" as schema
+  }
+}
+
+package "External" {
+  rectangle "Payment Gateway\n(Stripe/Adyen)" as extpay
+  rectangle "Email/SMS Providers\n(Sendgrid/Twilio)" as sms
+}
+
+' Links
+[API Gateway / WAF] --> ingress
+ingress --> mesh
+mesh --> bff
+mesh --> auth
+mesh --> users
+mesh --> orders
+mesh --> products
+mesh --> notify
+mesh --> payments
+
+auth --> pg
+users --> pg
+orders --> pg
+products --> pg
+payments --> pg
+
+orders --> broker : "produce OrderCreated"
+products --> broker : "produce ProductUpdated"
+notify --> broker : "consume events"
+payments --> extpay
+notify --> sms
+
+broker --> schema
+services --> redis
+prometheus --> services
+jaeger --> services
+logging --> services
+
+gitops --> ingress
+vault --> services
+@enduml
