@@ -1,9 +1,8 @@
 import re
 from datetime import date
-from typing import Optional, Literal
+from typing import Optional, Literal, Annotated
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict, model_validator
-from sqlalchemy.sql.annotation import Annotated
 
 from Backend.app.modules.users.models.enums import Role
 
@@ -37,11 +36,13 @@ class UserCreate(UserBase):
 
 
 class UserUpdate(BaseModel):
-    first_name: Annotated[str | None, Field(min_length=1, max_length=100) | None]
-    last_name: Annotated[str | None, Field(min_length=1, max_length=100) | None]
-    salary: Annotated[int | None, Field(gt=0) | None]
-    position_id: int | None
-    role: Role | None
+    login: Optional[Annotated[str, Field(min_length=3, max_length=100)]] = None
+    first_name: Optional[Annotated[str, Field(min_length=1, max_length=100)]] = None
+    last_name: Optional[Annotated[str, Field(min_length=1, max_length=100)]] = None
+    date_of_birth: Optional[date] = None
+    role: Optional[Role] = None
+    salary: Optional[Annotated[int, Field(gt=0)]] = None
+    position_id: Optional[int] = None
 
 
 class UserUpdatePassword(BaseModel):
