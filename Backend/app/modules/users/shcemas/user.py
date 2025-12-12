@@ -1,13 +1,14 @@
 import re
 from datetime import date
+from typing import Optional, Literal
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict, model_validator
 from sqlalchemy.sql.annotation import Annotated
 
 from Backend.app.modules.users.models.enums import Role
 
+
 def validate_strong_password(password: str) -> str:
-    """Валидация сильного пароля"""
     pattern = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
     if not re.match(pattern, password):
         raise ValueError(
@@ -34,12 +35,14 @@ class UserCreate(UserBase):
         lambda cls, v: validate_strong_password(v)
     )
 
+
 class UserUpdate(BaseModel):
     first_name: Annotated[str | None, Field(min_length=1, max_length=100) | None]
     last_name: Annotated[str | None, Field(min_length=1, max_length=100) | None]
     salary: Annotated[int | None, Field(gt=0) | None]
     position_id: int | None
     role: Role | None
+
 
 class UserUpdatePassword(BaseModel):
     old_password: str
@@ -50,11 +53,12 @@ class UserUpdatePassword(BaseModel):
         lambda cls, v: validate_strong_password(v)
     )
 
-    @model_validator(mode='after')
-    def validate_passwords_match(self) -> 'UserUpdatePassword':
+    @model_validator(mode="after")
+    def validate_passwords_match(self) -> "UserUpdatePassword":
         if self.new_password != self.repeat_new_password:
             raise ValueError("Пароли не совпадают")
         return self
+
 
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
@@ -68,3 +72,18 @@ class UserResponse(UserBase):
 class UserListResponse(BaseModel):
     items: list[UserResponse]
     total: int
+
+
+class UserFilter(BaseModel):
+    role: Optional[Role] = None
+    position_id: Optional[int] = None
+    min_salary: Optional[int] = Field(None, gt=0)
+    max_salary: Optional[int] = Field(None, gt=0)
+    search: Optional[str] = Field(None, min_length=1, max_length=100)
+
+
+class UserSort(BaseModel):
+    field: Literal["id", "login", "first_name", "last_name", "salary", "created_at"] = (
+        "id"
+    )
+    order: Literal["asc", "desc"] = "asc"

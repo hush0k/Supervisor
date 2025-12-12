@@ -1,6 +1,6 @@
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import select, or_, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from Backend.app.core.security import hash_password, verify_password
@@ -9,6 +9,8 @@ from Backend.app.modules.users.shcemas.user import (
     UserCreate,
     UserUpdate,
     UserUpdatePassword,
+    UserFilter,
+    UserSort,
 )
 
 
@@ -19,7 +21,7 @@ class UserService:
     async def create(self, user_in: UserCreate) -> User:
         user = User(
             **user_in.model_dump(exclude={"password"}),
-            hashed_password=hash_password(user_in.password)
+            hashed_password=hash_password(user_in.password),
         )
 
         self.db.add(user)
@@ -31,8 +33,39 @@ class UserService:
         result = await self.db.execute(select(User).where(User.id == user_id))
         return result.scalar_one_or_none()
 
-    async def get_all(self, skip: int = 0, limit: int = 100) -> list[User]:
-        result = await self.db.execute(select(User).offset(skip).limit(limit))
+    async def get_all(
+        self, filters: UserFilter, sort: UserSort, skip: int = 0, limit: int = 100
+    ) -> list[User]:
+
+        query = select(User)
+
+        if filters.role:
+            query.where(User.role == filters.role)
+
+        if filters.position_id:
+            query.where(User.position_id == filters.position_id)
+
+        if filters.max_salary is not None:
+            query.where(User.salary <= filters.max_salary)
+
+        if filters.min_salary is not None:
+            query.where(User.salary >= filters.min_salary)
+
+        if filters.search:
+            search_pattern = f"%{filters.search}"
+            query = query.where(
+                or_(
+                    User.first_name.ilike(search_pattern),
+                    User.last_name.ilike(search_pattern),
+                    User.login.ilike(search_pattern),
+                )
+            )
+
+        order_func = desc if sort.order == "desc" else asc
+        query = query.order_by(order_func(getattr(User, sort.field)))
+
+        query = query.offset(skip).limit(limit)
+        result = await self.db.execute(query)
         return list(result.scalars().all())
 
     async def update(self, user_id, user_in: UserUpdate) -> Optional[User]:
