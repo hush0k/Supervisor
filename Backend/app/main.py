@@ -5,7 +5,7 @@ from starlette.middleware.cors import CORSMiddleware
 
 from Backend.app.core.config import settings
 from Backend.app.core.db import init_db
-from Backend.app.modules.users.api import user
+from Backend.app.modules.users.api import user, position
 
 
 @asynccontextmanager
@@ -27,11 +27,11 @@ def create_app() -> FastAPI:
         allow_origins=["*"],
         allow_credentials=True,
         allow_methods=["*"],
-        allow_headers=["*"
-                       ""],
+        allow_headers=["*" ""],
     )
 
     _app.include_router(user.router, prefix="/api/v1")
+    _app.include_router(position.router, prefix="/api/v1")
 
     return _app
 

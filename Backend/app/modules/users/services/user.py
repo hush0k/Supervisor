@@ -84,21 +84,21 @@ class UserService:
 
     async def update_password(
         self, user_id: int, passwords: UserUpdatePassword
-    ) -> bool:
+    ) -> Optional[User]:
         user = await self.get_by_id(user_id)
 
         if not user:
-            return False
+            return None
 
-        if not verify_password(passwords.old_password, passwords.new_password):
-            return False
+        if not verify_password(passwords.old_password, user.hashed_password):
+            return None
 
         hashed_password = hash_password(passwords.new_password)
         user.hashed_password = hashed_password
 
         await self.db.flush()
         await self.db.refresh(user)
-        return True
+        return user
 
     async def delete(self, user_id) -> bool:
         user = await self.get_by_id(user_id)

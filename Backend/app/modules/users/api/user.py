@@ -55,7 +55,7 @@ async def get_all_users(
     ] = Query("id"),
     sort_order: Literal["asc", "desc"] = Query("asc"),
     skip: int = Query(0, ge=0),
-    limit: int = Query(1, ge=1000),
+    limit: int = Query(100, ge=1, le=1000),
 ):
     filters = UserFilter(
         role=role,
@@ -85,13 +85,15 @@ async def update_user(user_id: int, user_in: UserUpdate, service: ServiceDep):
 async def update_password(
     user_id: int, password: UserUpdatePassword, service: ServiceDep
 ):
-    success = await service.update_password(user_id, password)
+    user = await service.update_password(user_id, password)
 
-    if not success:
+    if not user:
         raise HTTPException(
             status_code=http_status.HTTP_400_BAD_REQUEST,
             detail="Неверный старый пароль или пользователь не найден",
         )
+
+    return user
 
 
 @router.delete("/{user_id}", status_code=http_status.HTTP_204_NO_CONTENT)

@@ -1,5 +1,6 @@
+from typing import Annotated, Optional
+
 from pydantic import BaseModel, Field, ConfigDict
-from sqlalchemy.sql.annotation import Annotated
 
 
 class PositionBase(BaseModel):
@@ -11,7 +12,7 @@ class PositionCreate(PositionBase):
 
 
 class PositionUpdate(BaseModel):
-    name: Annotated[str | None, Field(min_length=1, max_length=100) | None]
+    name: Optional[Annotated[str, Field(min_length=1, max_length=100)]] = None
 
 
 class PositionResponse(PositionBase):

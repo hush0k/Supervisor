@@ -1,5 +1,5 @@
 import re
-from datetime import date
+from datetime import date, datetime
 from typing import Optional, Literal, Annotated
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict, model_validator
@@ -66,8 +66,8 @@ class UserResponse(UserBase):
 
     id: int
     role: Role
-    created_at: date
-    updated_at: date
+    created_at: datetime
+    updated_at: datetime
 
 
 class UserListResponse(BaseModel):

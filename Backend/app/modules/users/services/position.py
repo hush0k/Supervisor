@@ -25,6 +25,10 @@ class PositionServices:
         )
         return result.scalar_one_or_none()
 
+    async def get_all(self) -> list[Position]:
+        result = await self.db.execute(select(Position))
+        return list(result.scalars().all())
+
     async def get_by_name(self, name: str) -> Position:
         result = await self.db.execute(select(Position).where(Position.name == name))
         return result.scalar_one_or_none()
