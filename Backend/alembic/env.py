@@ -9,12 +9,12 @@ from alembic import context
 # Добавляем корневую директорию проекта в путь для импортов
 sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
-from Backend.app.core.config import settings
-from Backend.app.core.db import Base
+from app.core.config import settings
+from app.core.db import Base
 
 # Импортируй все модели
-from Backend.app.modules.users.models.user import User
-from Backend.app.modules.users.models.position import Position
+from app.modules.users.models.user import User
+from app.modules.users.models.position import Position
 
 config = context.config
 

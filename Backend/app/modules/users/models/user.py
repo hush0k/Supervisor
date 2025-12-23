@@ -1,30 +1,19 @@
 from __future__ import annotations
 
-from datetime import date, datetime
+from datetime import date
 
 from sqlalchemy import (
-    DateTime,
-    func,
     Integer,
     String,
     Date,
     CheckConstraint,
     ForeignKey,
 )
-from sqlalchemy.orm import declarative_mixin, Mapped, mapped_column, relationship
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from Backend.app.core.db import Base
-from Backend.app.modules.users.models.enums import Role
-
-
-@declarative_mixin
-class TimestampMixin:
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
-    updated_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now(), nullable=False
-    )
+from app.core.base_class import TimestampMixin
+from app.core.db import Base
+from app.modules.users.models.enums import Role
 
 
 class User(Base, TimestampMixin):
@@ -47,3 +36,4 @@ class User(Base, TimestampMixin):
     position_id: Mapped[int] = mapped_column(ForeignKey("position.id"), nullable=False)
 
     position: Mapped["Position"] = relationship("Position", back_populates="user")
+    company: Mapped["Company"] = relationship("Company", back_populates="user")

@@ -3,7 +3,7 @@ from typing import List
 from sqlalchemy import String, Integer
 from sqlalchemy.orm import Mapped, mapped_column, Relationship, relationship
 
-from Backend.app.core.db import Base
+from app.core.db import Base
 
 
 class Position(Base):

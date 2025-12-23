@@ -3,9 +3,9 @@ from typing import Optional
 from sqlalchemy import select, or_, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from Backend.app.core.security import hash_password, verify_password
-from Backend.app.modules.users.models.user import User
-from Backend.app.modules.users.shcemas.user import (
+from app.core.security import hash_password, verify_password
+from app.modules.users.models.user import User
+from app.modules.users.shcemas.user import (
     UserCreate,
     UserUpdate,
     UserUpdatePassword,

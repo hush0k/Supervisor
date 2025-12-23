@@ -3,8 +3,8 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from Backend.app.modules.users.models.position import Position
-from Backend.app.modules.users.shcemas.position import PositionCreate, PositionUpdate
+from app.modules.users.models.position import Position
+from app.modules.users.shcemas.position import PositionCreate, PositionUpdate
 
 
 class PositionServices:

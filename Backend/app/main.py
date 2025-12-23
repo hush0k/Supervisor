@@ -3,9 +3,11 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 
-from Backend.app.core.config import settings
-from Backend.app.core.db import init_db
-from Backend.app.modules.users.api import user, position
+from app.core.config import settings
+from app.core.db import init_db
+from app.modules.auth.api import auth
+from app.modules.company.api import company
+from app.modules.users.api import user, position
 
 
 @asynccontextmanager
@@ -15,14 +17,14 @@ async def lifespan(_app: FastAPI):
 
 
 def create_app() -> FastAPI:
-    _app = FastAPI(
+    app = FastAPI(
         title=settings.PROJECT_NAME,
         version=settings.VERSION,
         debug=settings.DEBUG,
         lifespan=lifespan,
     )
 
-    _app.add_middleware(
+    app.add_middleware(
         CORSMiddleware,
         allow_origins=["*"],
         allow_credentials=True,
@@ -30,15 +32,17 @@ def create_app() -> FastAPI:
         allow_headers=["*" ""],
     )
 
-    _app.include_router(user.router, prefix="/api/v1")
-    _app.include_router(position.router, prefix="/api/v1")
+    app.include_router(auth.router, prefix="/api/v1")
+    app.include_router(user.router, prefix="/api/v1")
+    app.include_router(position.router, prefix="/api/v1")
+    app.include_router(company.router, prefix="/api/v1")
 
-    return _app
+    return app
 
 
-_app = create_app()
+app = create_app()
 
 
-@_app.get("/")
+@app.get("/")
 async def health_check():
     return {"status": "ok", "version": settings.VERSION}
