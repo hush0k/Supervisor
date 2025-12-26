@@ -13,7 +13,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.base_class import TimestampMixin
 from app.core.db import Base
-from app.modules.users.models.enums import Role
+from app.core.enums import Role
 
 
 class User(Base, TimestampMixin):

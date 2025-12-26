@@ -4,7 +4,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.users.models.position import Position
-from app.modules.users.shcemas.position import PositionCreate, PositionUpdate
+from app.modules.users.schemas.position import PositionCreate, PositionUpdate
 
 
 class PositionServices:

@@ -4,8 +4,11 @@ from fastapi import APIRouter, Depends, status as http_status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
+from app.core.dependencies import require_role
+from app.core.enums import Role
+from app.modules.users.models.user import User
 from app.modules.users.services.position import PositionServices
-from app.modules.users.shcemas.position import PositionResponse, PositionCreate
+from app.modules.users.schemas.position import PositionResponse, PositionCreate
 
 router = APIRouter(prefix="/position", tags=["Position"])
 
@@ -22,7 +25,11 @@ ServiceDep = Annotated[PositionServices, Depends(get_position_service)]
 @router.post(
     "/create", response_model=PositionResponse, status_code=http_status.HTTP_201_CREATED
 )
-async def create_position(pos_in: PositionCreate, service: ServiceDep):
+async def create_position(
+        pos_in: PositionCreate,
+        service: ServiceDep,
+        _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))]
+):
     return await service.create(pos_in)
 
 
@@ -39,4 +46,4 @@ async def get_pos_by_id(pos_id: int, service: ServiceDep):
 
 @router.get("/", response_model=list[PositionResponse])
 async def get_all_pos(service: ServiceDep):
-    return service.get_all()
+    return await service.get_all()

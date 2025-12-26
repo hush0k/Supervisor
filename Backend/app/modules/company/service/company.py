@@ -42,7 +42,7 @@ class CompanyService:
 
         query = query.offset(skip).limit(limit)
         result = await self.db.execute(query)
-        return list(result.scalar().all())
+        return list(result.scalars().all())
 
     async def update(
         self, company_in: CompanyUpdate, company_id: int

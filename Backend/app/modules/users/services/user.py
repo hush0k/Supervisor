@@ -1,11 +1,12 @@
 from typing import Optional
 
+from fastapi import HTTPException, status
 from sqlalchemy import select, or_, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password, verify_password
 from app.modules.users.models.user import User
-from app.modules.users.shcemas.user import (
+from app.modules.users.schemas.user import (
     UserCreate,
     UserUpdate,
     UserUpdatePassword,
@@ -23,6 +24,10 @@ class UserService:
             **user_in.model_dump(exclude={"password"}),
             hashed_password=hash_password(user_in.password),
         )
+
+        existing_user = await self.db.execute(select(User).where(User.login == user.login))
+        if existing_user.scalar_one_or_none():
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Пользователь уже существует.")
 
         self.db.add(user)
         await self.db.flush()

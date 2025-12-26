@@ -11,7 +11,7 @@ class Token(BaseModel):
 
 
 class TokenPayload(BaseModel):
-    sub: int
+    sub: str  # User ID as string (JWT standard requires string)
     exp: int  # Unix timestamp
     type: str
 

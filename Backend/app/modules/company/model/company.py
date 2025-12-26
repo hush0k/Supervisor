@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import List
 
 from sqlalchemy import Integer, String, ForeignKey, Date
 from sqlalchemy.orm import Mapped, relationship, mapped_column
@@ -19,4 +20,4 @@ class Company(Base, TimestampMixin):
     description: Mapped[str] = mapped_column(String(500), nullable=True)
     date_established: Mapped[datetime] = mapped_column(Date, nullable=False)
 
-    user: Mapped["User"] = relationship("User", back_populates="company")
+    user: Mapped[List["User"]] = relationship("User", back_populates="company")

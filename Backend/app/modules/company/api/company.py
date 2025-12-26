@@ -4,6 +4,8 @@ from fastapi import APIRouter, status, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
+from app.core.dependencies import require_role
+from app.core.enums import Role
 from app.modules.company.schemas.company import (
     CompanyCreate,
     CompanyResponse,
@@ -12,6 +14,7 @@ from app.modules.company.schemas.company import (
     CompanyUpdate,
 )
 from app.modules.company.service.company import CompanyService
+from app.modules.users.models.user import User
 
 router = APIRouter(prefix="/company", tags=["Company"])
 
@@ -27,7 +30,9 @@ ServiceDep = Annotated[CompanyService, Depends(get_company_service)]
     "/create", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED
 )
 async def create_company(
-    company_in: CompanyCreate, service: ServiceDep
+    company_in: CompanyCreate,
+    service: ServiceDep,
+    _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))]
 ) -> CompanyResponse:
     return await service.create(company_in)
 
@@ -63,9 +68,12 @@ async def get_company(company_id: int, service: ServiceDep) -> CompanyResponse:
 
 @router.patch("/{company_id}", response_model=CompanyResponse)
 async def update_company(
-    company_id: int, company_in: CompanyUpdate, service: ServiceDep
+        company_in: CompanyUpdate,
+        company_id: int,
+        service: ServiceDep,
+        _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))]
 ) -> CompanyResponse:
-    company = await service.update(company_id)
+    company = await service.update(company_in, company_id)
     if not company:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Company not found"
@@ -75,7 +83,11 @@ async def update_company(
 
 
 @router.delete("/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_company(company_id: int, service: ServiceDep):
+async def delete_company(
+        company_id: int,
+        service: ServiceDep,
+        _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))]
+):
     success = await service.delete(company_id)
     if not success:
         raise HTTPException(

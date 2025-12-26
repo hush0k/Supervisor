@@ -10,6 +10,7 @@ BACKEND_DIR=Backend
 VENV_PYTHON=../.venv/bin/python
 VENV_ALEMBIC=../.venv/bin/alembic
 UVICORN=../.venv/bin/uvicorn
+PYTHONPATH=Backend
 
 help: ## Показать это сообщение помощи
 	@echo "$(GREEN)Доступные команды:$(NC)"
@@ -71,8 +72,18 @@ db-reset: ## ВНИМАНИЕ: Полностью пересоздать БД (�
 		echo "$(GREEN)БД пересоздана!$(NC)"; \
 	fi
 
-test: ## Запустить тесты (если есть)
-	@echo "$(GREEN)Запуск тестов...$(NC)"
-	$(VENV_PYTHON) -m pytest $(BACKEND_DIR)/tests/
+# make test msg="test-auth" или msg="test-user"
+test:
+ifndef msg
+	$(error Необходимо указать msg="имя теста (test-auth или test-user)")
+endif
+ifeq ($(msg),test-auth)
+	@echo "Запуск тестов модуля auth..."
+	PYTHONPATH=$(PYTHONPATH) pytest -v Backend/tests/test_auth.py
+endif
+ifeq ($(msg),test-user)
+	@echo "Запуск тестов модуля user..."
+	PYTHONPATH=$(PYTHONPATH) pytest -v Backend/tests/test_user.py
+endif
 
 .DEFAULT_GOAL := help

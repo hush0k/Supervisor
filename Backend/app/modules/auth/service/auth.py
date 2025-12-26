@@ -9,7 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import settings
 from app.core.security import verify_password
-from app.modules.auth.shemas.auth import TokenPayload
+from app.modules.auth.schemas.auth import TokenPayload
 from app.modules.users.models.user import User
 
 
@@ -21,11 +21,10 @@ class AuthService:
         self.db = db
 
     def create_access_token(self, user_id: int) -> str:
-        """Создать access токен"""
         expire = datetime.now(UTC) + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-        payload = TokenPayload(sub=user_id, exp=int(expire.timestamp()), type="access")
+        payload = TokenPayload(sub=str(user_id), exp=int(expire.timestamp()), type="access")
         return jwt.encode(
             payload.model_dump(), settings.SECRET_KEY, algorithm=settings.ALGORITHM
         )
@@ -33,7 +32,7 @@ class AuthService:
     def create_refresh_token(self, user_id: int) -> str:
         """Создать refresh токен"""
         expire = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-        payload = TokenPayload(sub=user_id, exp=int(expire.timestamp()), type="refresh")
+        payload = TokenPayload(sub=str(user_id), exp=int(expire.timestamp()), type="refresh")
         return jwt.encode(
             payload.model_dump(), settings.SECRET_KEY, algorithm=settings.ALGORITHM
         )
@@ -70,7 +69,6 @@ class AuthService:
         token = credentials.credentials
 
         token_data = self.verify_token(token, "access")
-        print(token_data)
         if not token_data:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
@@ -78,7 +76,7 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        result = await self.db.execute(select(User).where(User.id == token_data.sub))
+        result = await self.db.execute(select(User).where(User.id == int(token_data.sub)))
         user = result.scalar_one_or_none()
 
         if not user:

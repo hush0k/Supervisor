@@ -7,9 +7,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_db
 
 from app.modules.auth.service.auth import AuthService, security
-from app.modules.auth.shemas.auth import Token, LoginRequest, RefreshRequest
+from app.modules.auth.schemas.auth import Token, LoginRequest, RefreshRequest
 from app.modules.users.services.user import UserService
-from app.modules.users.shcemas.user import UserResponse
+from app.modules.users.schemas.user import UserResponse
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
 
@@ -57,7 +57,7 @@ async def refresh_token(
             detail="Невалидный refresh токен",
         )
 
-    user = await user_service.get_by_id(token_data.sub)
+    user = await user_service.get_by_id(int(token_data.sub))
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
