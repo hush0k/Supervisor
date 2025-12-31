@@ -51,7 +51,7 @@ class CompanyService:
         if not company:
             return None
 
-        update_data = company_in.dict(exclude_unset=True)
+        update_data = company_in.model_dump(exclude_unset=True)
 
         for field, value in update_data.items():
             setattr(company, field, value)

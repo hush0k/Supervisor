@@ -7,6 +7,7 @@ from app.core.config import settings
 from app.core.db import init_db
 from app.modules.auth.api import auth
 from app.modules.company.api import company
+from app.modules.task.api import task
 from app.modules.users.api import user, position
 
 
@@ -36,6 +37,7 @@ def create_app() -> FastAPI:
     app.include_router(user.router, prefix="/api/v1")
     app.include_router(position.router, prefix="/api/v1")
     app.include_router(company.router, prefix="/api/v1")
+    app.include_router(task.router, prefix="/api/v1")
 
     return app
 

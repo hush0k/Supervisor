@@ -1,6 +1,6 @@
 from typing import Annotated, List, Optional, Literal
 
-from fastapi import APIRouter, status, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
@@ -32,7 +32,7 @@ ServiceDep = Annotated[CompanyService, Depends(get_company_service)]
 async def create_company(
     company_in: CompanyCreate,
     service: ServiceDep,
-    _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))]
+    _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
 ) -> CompanyResponse:
     return await service.create(company_in)
 
@@ -60,7 +60,7 @@ async def get_company(company_id: int, service: ServiceDep) -> CompanyResponse:
     company = await service.get_by_id(company_id)
     if not company:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Company not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Компания не найдено"
         )
 
     return company
@@ -68,15 +68,15 @@ async def get_company(company_id: int, service: ServiceDep) -> CompanyResponse:
 
 @router.patch("/{company_id}", response_model=CompanyResponse)
 async def update_company(
-        company_in: CompanyUpdate,
-        company_id: int,
-        service: ServiceDep,
-        _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))]
+    company_in: CompanyUpdate,
+    company_id: int,
+    service: ServiceDep,
+    _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
 ) -> CompanyResponse:
     company = await service.update(company_in, company_id)
     if not company:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Company not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Компания не найдено"
         )
 
     return company
@@ -84,12 +84,12 @@ async def update_company(
 
 @router.delete("/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_company(
-        company_id: int,
-        service: ServiceDep,
-        _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))]
+    company_id: int,
+    service: ServiceDep,
+    _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
 ):
     success = await service.delete(company_id)
     if not success:
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Company not found"
+            status_code=status.HTTP_404_NOT_FOUND, detail="Компания не найдено"
         )

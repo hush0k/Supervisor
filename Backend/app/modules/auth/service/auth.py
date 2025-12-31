@@ -24,7 +24,9 @@ class AuthService:
         expire = datetime.now(UTC) + timedelta(
             minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES
         )
-        payload = TokenPayload(sub=str(user_id), exp=int(expire.timestamp()), type="access")
+        payload = TokenPayload(
+            sub=str(user_id), exp=int(expire.timestamp()), type="access"
+        )
         return jwt.encode(
             payload.model_dump(), settings.SECRET_KEY, algorithm=settings.ALGORITHM
         )
@@ -32,7 +34,9 @@ class AuthService:
     def create_refresh_token(self, user_id: int) -> str:
         """Создать refresh токен"""
         expire = datetime.now(UTC) + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
-        payload = TokenPayload(sub=str(user_id), exp=int(expire.timestamp()), type="refresh")
+        payload = TokenPayload(
+            sub=str(user_id), exp=int(expire.timestamp()), type="refresh"
+        )
         return jwt.encode(
             payload.model_dump(), settings.SECRET_KEY, algorithm=settings.ALGORITHM
         )
@@ -76,7 +80,9 @@ class AuthService:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        result = await self.db.execute(select(User).where(User.id == int(token_data.sub)))
+        result = await self.db.execute(
+            select(User).where(User.id == int(token_data.sub))
+        )
         user = result.scalar_one_or_none()
 
         if not user:

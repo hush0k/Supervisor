@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+from typing import List
 
 from sqlalchemy import (
     Integer,
@@ -14,6 +15,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.core.base_class import TimestampMixin
 from app.core.db import Base
 from app.core.enums import Role
+from app.modules.task.model.task import task_executor, accessed
 
 
 class User(Base, TimestampMixin):
@@ -37,3 +39,5 @@ class User(Base, TimestampMixin):
 
     position: Mapped["Position"] = relationship("Position", back_populates="user")
     company: Mapped["Company"] = relationship("Company", back_populates="user")
+    tasks: Mapped[list["Task"]] = relationship("Task", secondary=task_executor, back_populates="executors")
+    accesses: Mapped[list["Task"]] = relationship("Task", secondary=accessed, back_populates="accesses")
