@@ -8,14 +8,14 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
     Column,
-    Table,
+    Table, Date,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import date
 
 from app.core.base_class import TimestampMixin
 from app.core.db import Base
-from app.core.enums import TaskType, City
+from app.core.enums import TaskType, City, TaskStep
 
 task_executor = Table(
     "task_executor",
@@ -35,6 +35,7 @@ class Task(Base, TimestampMixin):
     __tablename__ = "task"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
+    executor_id: Mapped[int] = mapped_column(ForeignKey("user.id"), nullable=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(String(1000), nullable=True)
     deadline: Mapped[date] = mapped_column(DateTime, nullable=False)
@@ -43,8 +44,11 @@ class Task(Base, TimestampMixin):
     payment: Mapped[int] = mapped_column(Integer, nullable=False)
     duration: Mapped[int] = mapped_column(Integer, nullable=False)
     city: Mapped[City] = mapped_column(Enum(City), nullable=True)
-    is_taken: Mapped[bool] = mapped_column(Boolean, nullable=False)
+    task_step: Mapped[TaskStep] = mapped_column(Enum(TaskStep), nullable=False)
+    completed_at: Mapped[date] = mapped_column(Date, nullable=True)
+    verified_at: Mapped[date] = mapped_column(Date, nullable=True)
 
+    user: Mapped["User"] = relationship("User", back_populates="executors")
     executors: Mapped[List["User"]] = relationship(
         "User", secondary=task_executor, back_populates="tasks"
     )

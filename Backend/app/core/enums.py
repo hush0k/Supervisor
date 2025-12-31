@@ -26,3 +26,11 @@ class City(StrEnum):
     ORAL = "oral"
     PETROPAVL = "petropavl"
     TURKISTAN = "turkistan"
+
+class TaskStep(StrEnum):
+    AVAILABLE = "available"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
+    VERIFIED = "verified"
+    FAILED = "failed"
+
