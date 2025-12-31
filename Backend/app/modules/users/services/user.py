@@ -45,16 +45,16 @@ class UserService:
         query = select(User)
 
         if filters.role:
-            query.where(User.role == filters.role)
+            query = query.where(User.role == filters.role)
 
         if filters.position_id:
-            query.where(User.position_id == filters.position_id)
+            query = query.where(User.position_id == filters.position_id)
 
         if filters.max_salary is not None:
-            query.where(User.salary <= filters.max_salary)
+            query = query.where(User.salary <= filters.max_salary)
 
         if filters.min_salary is not None:
-            query.where(User.salary >= filters.min_salary)
+            query = query.where(User.salary >= filters.min_salary)
 
         if filters.search:
             search_pattern = f"%{filters.search}"

@@ -42,7 +42,7 @@ class PositionServices:
 
         update_data = position_new.model_dump()
 
-        for field, value in update_data.item():
+        for field, value in update_data.items():
             setattr(position, field, value)
 
         await self.db.flush()
