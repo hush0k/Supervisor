@@ -1,3 +1,4 @@
+# Backend/app/modules/users/models/user.py
 from __future__ import annotations
 
 from datetime import date
@@ -12,10 +13,9 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.core.base_class import TimestampMixin
+from app.modules.base_module.base_class import TimestampMixin
 from app.core.db import Base
-from app.core.enums import Role
-from app.modules.task.model.task import task_executor, accessed
+from app.modules.base_module.enums import Role
 
 
 class User(Base, TimestampMixin):
@@ -38,6 +38,21 @@ class User(Base, TimestampMixin):
     position_id: Mapped[int] = mapped_column(ForeignKey("position.id"), nullable=False)
 
     position: Mapped["Position"] = relationship("Position", back_populates="user")
-    company: Mapped["Company"] = relationship("Company", back_populates="user")
-    tasks: Mapped[list["Task"]] = relationship("Task", secondary=task_executor, back_populates="executors")
-    accesses: Mapped[list["Task"]] = relationship("Task", secondary=accessed, back_populates="accesses")
+
+    taken_tasks: Mapped[List["Task"]] = relationship(
+        "Task",
+        foreign_keys="Task.executor_id",
+        back_populates="executor"
+    )
+
+    brigade_tasks: Mapped[List["Task"]] = relationship(
+        "Task",
+        secondary="task_executor",
+        back_populates="executors"
+    )
+
+    accessible_tasks: Mapped[List["Task"]] = relationship(
+        "Task",
+        secondary="accessed",
+        back_populates="accesses"
+    )

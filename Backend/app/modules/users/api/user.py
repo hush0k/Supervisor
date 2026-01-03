@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, status as http_status, HTTPException, Qu
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
-from app.core.enums import Role
+from app.modules.base_module.enums import Role
 from app.modules.users.services.user import UserService
 from app.modules.users.schemas.user import (
     UserResponse,

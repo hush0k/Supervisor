@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, status as http_status, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
-from app.core.dependencies import require_role
-from app.core.enums import Role
+from app.modules.base_module.dependencies import require_role
+from app.modules.base_module.enums import Role
 from app.modules.users.models.user import User
 from app.modules.users.services.position import PositionServices
 from app.modules.users.schemas.position import PositionResponse, PositionCreate

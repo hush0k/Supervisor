@@ -4,8 +4,8 @@ from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
-from app.core.dependencies import require_role
-from app.core.enums import Role
+from app.modules.base_module.dependencies import require_role
+from app.modules.base_module.enums import Role
 from app.modules.company.schemas.company import (
     CompanyCreate,
     CompanyResponse,

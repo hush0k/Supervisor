@@ -5,7 +5,7 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
-from app.core.enums import Role
+from app.modules.base_module.enums import Role
 from app.modules.auth.service.auth import security, AuthService
 from app.modules.users.models.user import User
 

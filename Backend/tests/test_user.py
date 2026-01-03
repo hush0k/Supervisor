@@ -11,7 +11,7 @@ from app.modules.users.services.user import UserService
 from app.modules.users.services.position import PositionServices
 from app.modules.users.schemas.user import UserCreate, UserUpdate, UserUpdatePassword, UserFilter, UserSort
 from app.modules.users.schemas.position import PositionCreate
-from app.core.enums import Role
+from app.modules.base_module.enums import Role
 
 # ---------------- Настройка тестовой базы ----------------
 DATABASE_URL = "sqlite+aiosqlite:///:memory:"

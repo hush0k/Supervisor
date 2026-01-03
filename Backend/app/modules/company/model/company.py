@@ -4,7 +4,7 @@ from typing import List
 from sqlalchemy import Integer, String, ForeignKey, Date
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 
-from app.core.base_class import TimestampMixin
+from app.modules.base_module.base_class import TimestampMixin
 from app.core.db import Base
 
 

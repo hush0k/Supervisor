@@ -3,7 +3,7 @@ from typing import Annotated, Optional, List, Literal
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict
 
-from app.core.enums import TaskType, City
+from app.modules.base_module.enums import TaskType, City, TaskStep
 from app.modules.users.schemas.user import UserResponse
 
 
@@ -46,6 +46,7 @@ class TaskUpdate(BaseModel):
     access_ids: Optional[list[int]] = None
 
 
+# Backend/app/modules/task/schemas/task.py - обновить TaskResponse
 class TaskResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -58,7 +59,13 @@ class TaskResponse(BaseModel):
     payment: int
     duration: int
     city: City
-    is_taken: bool
+    task_step: (
+
+        TaskStep)
+    completed_at: Optional[date] = None
+    verified_at: Optional[date] = None
+
+    executor_id: Optional[int] = None
 
     executors: List[UserResponse] = []
     accesses: List[UserResponse] = []

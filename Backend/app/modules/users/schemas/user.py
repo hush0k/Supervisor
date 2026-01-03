@@ -4,7 +4,7 @@ from typing import Optional, Literal, Annotated
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict, model_validator
 
-from app.core.enums import Role
+from app.modules.base_module.enums import Role
 
 
 def validate_strong_password(password: str) -> str:
