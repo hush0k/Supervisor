@@ -20,4 +20,4 @@ class Company(Base, TimestampMixin):
     description: Mapped[str] = mapped_column(String(500), nullable=True)
     date_established: Mapped[datetime] = mapped_column(Date, nullable=False)
 
-    user: Mapped[List["User"]] = relationship("User", back_populates="company")
+    owner: Mapped["User"] = relationship("User", back_populates="companies")

@@ -1,10 +1,9 @@
 from datetime import date
 from typing import Annotated, Optional, List, Literal
 
-from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic import BaseModel, Field, field_validator, ConfigDict, model_validator
 
 from app.modules.base_module.enums import TaskType, City, TaskStep
-from app.modules.users.schemas.user import UserResponse
 
 
 class TaskBase(BaseModel):
@@ -14,11 +13,8 @@ class TaskBase(BaseModel):
     is_active: Annotated[bool, Field(default=True)]
     task_type: Annotated[TaskType, Field(default=TaskType.SOLO)]
     payment: Annotated[int, Field(ge=0, default=0)]
-    duration: Annotated[int, Field(gt=0, default=1)]
     city: City
-    is_taken: Annotated[bool, Field(default=False)]
-    executor_ids: List[int] = Field(default_factory=list)
-    access_ids: List[int] = Field(default_factory=list)
+    task_step: Annotated[TaskStep, Field(default=TaskStep.AVAILABLE)]
 
     @field_validator("deadline")
     @classmethod
@@ -29,7 +25,18 @@ class TaskBase(BaseModel):
 
 
 class TaskCreate(TaskBase):
-    pass
+    duration: Optional[Annotated[int, Field(gt=0)]] = None
+
+    @model_validator(mode="after")
+    def set_duration_from_deadline(self) -> "TaskCreate":
+        if self.duration is None:
+            now = date.today()
+            days = (self.deadline - now).days
+            weeks = days // 7
+            if days % 7 != 0:
+                weeks += 1
+            self.duration = max(weeks, 1)
+        return self
 
 
 class TaskUpdate(BaseModel):
@@ -41,12 +48,9 @@ class TaskUpdate(BaseModel):
     payment: Optional[Annotated[int, Field(ge=0)]] = None
     duration: Optional[Annotated[int, Field(gt=0)]] = None
     city: Optional[City] = None
-    is_taken: Optional[bool] = None
-    executor_ids: Optional[list[int]] = None
-    access_ids: Optional[list[int]] = None
+    task_step: Optional[TaskStep] = None
 
 
-# Backend/app/modules/task/schemas/task.py - обновить TaskResponse
 class TaskResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -59,16 +63,11 @@ class TaskResponse(BaseModel):
     payment: int
     duration: int
     city: City
-    task_step: (
-
-        TaskStep)
+    task_step: TaskStep
     completed_at: Optional[date] = None
     verified_at: Optional[date] = None
 
     executor_id: Optional[int] = None
-
-    executors: List[UserResponse] = []
-    accesses: List[UserResponse] = []
 
 
 class TaskList(BaseModel):
@@ -85,10 +84,7 @@ class TaskFilter(BaseModel):
     min_duration: Optional[int] = None
     max_duration: Optional[int] = None
     city: Optional[City] = None
-    is_taken: Optional[bool] = None
-
-    executor_ids: List[int] = []
-    access_ids: List[int] = []
+    task_step: Optional[TaskStep] = None
     search: Optional[str] = Field(None, min_length=1, max_length=100)
 
 
@@ -100,7 +96,7 @@ class TaskSort(BaseModel):
         "is_active",
         "task_type",
         "city",
-        "is_taken",
+        "task_step",
         "executors",
         "accesses",
     ] = "deadline"

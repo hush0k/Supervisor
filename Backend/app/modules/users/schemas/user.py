@@ -1,10 +1,14 @@
 import re
 from datetime import date, datetime
-from typing import Optional, Literal, Annotated
+from typing import Optional, Literal, Annotated, TYPE_CHECKING
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict, model_validator
 
 from app.modules.base_module.enums import Role
+from app.modules.task.model.task import Task
+
+if TYPE_CHECKING:
+    from app.modules.task.schemas.task import TaskResponse
 
 
 def validate_strong_password(password: str) -> str:

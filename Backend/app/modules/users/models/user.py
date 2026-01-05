@@ -39,20 +39,7 @@ class User(Base, TimestampMixin):
 
     position: Mapped["Position"] = relationship("Position", back_populates="user")
 
-    taken_tasks: Mapped[List["Task"]] = relationship(
-        "Task",
-        foreign_keys="Task.executor_id",
-        back_populates="executor"
-    )
-
-    brigade_tasks: Mapped[List["Task"]] = relationship(
-        "Task",
-        secondary="task_executor",
-        back_populates="executors"
-    )
-
-    accessible_tasks: Mapped[List["Task"]] = relationship(
-        "Task",
-        secondary="accessed",
-        back_populates="accesses"
+    companies: Mapped[List["Company"]] = relationship(
+        "Company",
+        back_populates="owner"
     )

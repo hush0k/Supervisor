@@ -6,13 +6,13 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
 from app.modules.base_module.dependencies import require_role
-from app.modules.base_module.enums import Role, TaskType, City
+from app.modules.base_module.enums import Role, TaskType, City, TaskStep
 from app.modules.task.schemas.task import (
     TaskResponse,
     TaskCreate,
     TaskSort,
     TaskFilter,
-    TaskUpdate,
+    TaskUpdate
 )
 from app.modules.task.services.task import TaskService
 from app.modules.users.models.user import User
@@ -49,10 +49,8 @@ async def get_all_tasks(
     min_payment: Optional[int] = None,
     max_payment: Optional[int] = None,
     city: Optional[City] = None,
-    is_taken: Optional[bool] = None,
+    task_step: Optional[TaskStep] = None,
     search: Optional[str] = None,
-    executor_ids: Optional[List[int]] = None,
-    access_ids: Optional[List[int]] = None,
     sort_field: Literal[
         "id",
         "name",
@@ -60,9 +58,7 @@ async def get_all_tasks(
         "is_active",
         "task_type",
         "city",
-        "is_taken",
-        "executors",
-        "accesses",
+        "task_step",
     ] = "deadline",
     sort_order: Literal["asc", "desc"] = "asc",
     skip: int = Query(0, ge=0),
@@ -77,10 +73,8 @@ async def get_all_tasks(
         min_payment=min_payment,
         max_payment=max_payment,
         city=city,
-        is_taken=is_taken,
+        task_step=task_step,
         search=search,
-        executor_ids=executor_ids or [],
-        access_ids=access_ids or [],
     )
 
     sort = TaskSort(field=sort_field, order=sort_order)
