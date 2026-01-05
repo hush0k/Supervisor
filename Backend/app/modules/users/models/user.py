@@ -48,10 +48,10 @@ class User(Base, TimestampMixin):
         "Company",
         back_populates="owner"
     )
-    accessed: Mapped[List["TaskOperation"]] = relationship(
+    accessed_users: Mapped[List["TaskOperation"]] = relationship(
         "TaskOperation",
-        secondary="accessed",
-        back_populates="accessed",
+        secondary="accessed_users",
+        back_populates="accessed_users",
     )
     executed_tasks: Mapped[List["TaskOperation"]] = relationship(
         "TaskOperation",

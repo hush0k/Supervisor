@@ -11,18 +11,18 @@ if TYPE_CHECKING:
     from app.modules.users.models.user import User
 
 
-accessed = Table(
-    "accessed",
+accessed_users = Table(
+    "accessed_users",
     Base.metadata,
     Column("user_id", ForeignKey("user.id"), primary_key=True),
-    Column("task_id", ForeignKey("task.id"), primary_key=True),
+    Column("task_id", ForeignKey("task_operations.id"), primary_key=True),
 )
 
 executors = Table(
     "executors",
     Base.metadata,
     Column("user_id", ForeignKey("user.id"), primary_key=True),
-    Column("task_id", ForeignKey("task.id"), primary_key=True),
+    Column("task_id", ForeignKey("task_operations.id"), primary_key=True),
 )
 
 class TaskOperation(Base):
@@ -32,10 +32,10 @@ class TaskOperation(Base):
     task_id: Mapped[int] = mapped_column(ForeignKey("task.id"), nullable=False)
 
     task: Mapped["Task"] = relationship("Task", back_populates="operations")
-    accessed: Mapped[List["User"]] = relationship(
+    accessed_users: Mapped[List["User"]] = relationship(
         "User",
-        secondary=accessed,
-        back_populates="accessed",
+        secondary=accessed_users,
+        back_populates="accessed_users",
     )
     executors: Mapped[List["User"]] = relationship(
         "User",
