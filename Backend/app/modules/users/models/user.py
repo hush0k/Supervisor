@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import List
+from typing import List, TYPE_CHECKING
 
 from sqlalchemy import (
     Integer,
@@ -16,6 +16,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.modules.base_module.base_class import TimestampMixin
 from app.core.db import Base
 from app.modules.base_module.enums import Role
+
+if TYPE_CHECKING:
+    from app.modules.company.model.company import Company
+    from position import Position
+    from app.modules.task_operations.model.task_operation import TaskOperation
 
 
 class User(Base, TimestampMixin):
@@ -42,4 +47,14 @@ class User(Base, TimestampMixin):
     companies: Mapped[List["Company"]] = relationship(
         "Company",
         back_populates="owner"
+    )
+    accessed: Mapped[List["TaskOperation"]] = relationship(
+        "TaskOperation",
+        secondary="accessed",
+        back_populates="accessed",
+    )
+    executed_tasks: Mapped[List["TaskOperation"]] = relationship(
+        "TaskOperation",
+        secondary="executors",
+        back_populates="executors",
     )

@@ -1,14 +1,44 @@
-from typing import List
+from typing import List, TYPE_CHECKING
 
-from sqlalchemy import Integer
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy import Integer, ForeignKey, Column, Table
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
 
+
+if TYPE_CHECKING:
+    from app.modules.task.model.task import Task
+    from app.modules.users.models.user import User
+
+
+accessed = Table(
+    "accessed",
+    Base.metadata,
+    Column("user_id", ForeignKey("user.id"), primary_key=True),
+    Column("task_id", ForeignKey("task.id"), primary_key=True),
+)
+
+executors = Table(
+    "executors",
+    Base.metadata,
+    Column("user_id", ForeignKey("user.id"), primary_key=True),
+    Column("task_id", ForeignKey("task.id"), primary_key=True),
+)
 
 class TaskOperation(Base):
     __tablename__ = "task_operations"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
-    task_id: Mapped[int] = mapped_column(Integer, nullable=False)
-    user_ids: Mapped[list[int]] = mapped_column(list[int], nullable=False)
+    task_id: Mapped[int] = mapped_column(ForeignKey("task.id"), nullable=False)
+
+    task: Mapped["Task"] = relationship("Task", back_populates="operations")
+    accessed: Mapped[List["User"]] = relationship(
+        "User",
+        secondary=accessed,
+        back_populates="accessed",
+    )
+    executors: Mapped[List["User"]] = relationship(
+        "User",
+        secondary=executors,
+        back_populates="executed_tasks",
+    )
