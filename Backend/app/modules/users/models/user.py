@@ -1,4 +1,3 @@
-# Backend/app/modules/users/models/user.py
 from __future__ import annotations
 
 from datetime import date
@@ -19,7 +18,7 @@ from app.modules.base_module.enums import Role
 
 if TYPE_CHECKING:
     from app.modules.company.model.company import Company
-    from position import Position
+    from app.modules.users.models.position import Position
     from app.modules.task_operations.model.task_operation import TaskOperation
 
 
@@ -28,12 +27,7 @@ class User(Base, TimestampMixin):
     __table_args__ = (CheckConstraint("salary > 0", name="check_salary_non_negative"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
-    login: Mapped[str] = mapped_column(
-        String(100),
-        index=True,
-        unique=True,
-        nullable=False,
-    )
+    login: Mapped[str] = mapped_column(String(100), index=True, unique=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(100), nullable=False)
     first_name: Mapped[str] = mapped_column(String(100), nullable=False)
     last_name: Mapped[str] = mapped_column(String(100), nullable=False)
@@ -43,17 +37,14 @@ class User(Base, TimestampMixin):
     position_id: Mapped[int] = mapped_column(ForeignKey("position.id"), nullable=False)
 
     position: Mapped["Position"] = relationship("Position", back_populates="user")
+    companies: Mapped[List["Company"]] = relationship("Company", back_populates="owner")
 
-    companies: Mapped[List["Company"]] = relationship(
-        "Company",
-        back_populates="owner"
-    )
-    accessed_users: Mapped[List["TaskOperation"]] = relationship(
+    accessed_operations: Mapped[List["TaskOperation"]] = relationship(
         "TaskOperation",
         secondary="accessed_users",
         back_populates="accessed_users",
     )
-    executed_tasks: Mapped[List["TaskOperation"]] = relationship(
+    executed_operations: Mapped[List["TaskOperation"]] = relationship(
         "TaskOperation",
         secondary="executors",
         back_populates="executors",

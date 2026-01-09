@@ -35,10 +35,10 @@ class TaskOperation(Base):
     accessed_users: Mapped[List["User"]] = relationship(
         "User",
         secondary=accessed_users,
-        back_populates="accessed_users",
+        back_populates="accessed_operations",
     )
     executors: Mapped[List["User"]] = relationship(
         "User",
         secondary=executors,
-        back_populates="executed_tasks",
+        back_populates="executed_operations",
     )

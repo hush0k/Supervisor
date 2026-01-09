@@ -1,4 +1,4 @@
-from typing import List, Optional, TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 from sqlalchemy import (
     Integer,
@@ -33,4 +33,4 @@ class Task(Base, TimestampMixin):
     completed_at: Mapped[Optional[Date]] = mapped_column(Date, nullable=True)
     verified_at: Mapped[Optional[Date]] = mapped_column(Date, nullable=True)
 
-    operations: Mapped["TaskOperation"] = relationship("TaskOperation", back_populates="task")
+    operations: Mapped["TaskOperation"] = relationship("TaskOperation", back_populates="task", uselist=False)

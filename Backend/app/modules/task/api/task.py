@@ -15,6 +15,8 @@ from app.modules.task.schemas.task import (
     TaskUpdate
 )
 from app.modules.task.services.task import TaskService
+from app.modules.task_operations.schema.task_operation import TaskOperationCreate
+from app.modules.task_operations.service.task_operation import TaskOperationService
 from app.modules.users.models.user import User
 
 router = APIRouter(prefix="/task", tags=["Task"])
@@ -23,8 +25,12 @@ router = APIRouter(prefix="/task", tags=["Task"])
 def get_task_service(db: Annotated[AsyncSession, Depends(get_db)]):
     return TaskService(db)
 
+def get_task_operation_service(db: Annotated[AsyncSession, Depends(get_db)]):
+    return TaskOperationService(db)
+
 
 ServiceDep = Annotated[TaskService, Depends(get_task_service)]
+ServiceOperationDep = Annotated[TaskOperationService, Depends(get_task_operation_service)]
 
 
 @router.post(
@@ -32,10 +38,14 @@ ServiceDep = Annotated[TaskService, Depends(get_task_service)]
 )
 async def create_task(
     task_in: TaskCreate,
+    task_operation_in: TaskOperationCreate,
     service: ServiceDep,
+    operation_service:  ServiceOperationDep,
     _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
 ) -> TaskResponse:
-    return await service.create(task_in)
+    task = await service.create(task_in)
+    await operation_service.create(task_operation_in)
+
 
 
 @router.get("/", response_model=List[TaskResponse])
