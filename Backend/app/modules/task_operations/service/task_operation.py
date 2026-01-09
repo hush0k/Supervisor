@@ -16,12 +16,12 @@ class TaskOperationService:
     async def create(self, task_id: int, task_in: TaskOperationCreate) -> TaskOperationResponse:
         task_operation = TaskOperation(task_id=task_id)
 
-        if task_in.accessed_users:
+        if task_in.accessed_users_ids:
             result = await self.db.execute(
                 select(User).where(User.id.in_(task_in.accessed_users))
             )
             task_operation.accessed_users = list(result.scalars().all())
-        if task_in.executors:
+        if task_in.executors_ids:
             result = await self.db.execute(
                 select(User).where(User.id.in_(task_in.executors))
             )

@@ -44,7 +44,8 @@ async def create_task(
     _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
 ) -> TaskResponse:
     task = await service.create(task_in)
-    await operation_service.create(task_operation_in)
+    await operation_service.create(task.id, task_operation_in)
+    return task
 
 
 

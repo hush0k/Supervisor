@@ -6,8 +6,8 @@ from app.modules.users.schemas.user import UserResponse
 
 
 class TaskOperationBase(BaseModel):
-    accessed_users: list[UserResponse]
-    executors: list[UserResponse]
+    accessed_users_ids: list[int] = []
+    executors_ids: list[int] = []
 
 class TaskOperationCreate(TaskOperationBase):
     pass
