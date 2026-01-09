@@ -18,12 +18,12 @@ class TaskOperationService:
 
         if task_in.accessed_users_ids:
             result = await self.db.execute(
-                select(User).where(User.id.in_(task_in.accessed_users))
+                select(User).where(User.id.in_(task_in.accessed_user_ids))
             )
             task_operation.accessed_users = list(result.scalars().all())
         if task_in.executors_ids:
             result = await self.db.execute(
-                select(User).where(User.id.in_(task_in.executors))
+                select(User).where(User.id.in_(task_in.executors_ids))
             )
             task_operation.executors = list(result.scalars().all())
 
