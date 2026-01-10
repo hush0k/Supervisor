@@ -5,6 +5,10 @@ from sqlalchemy import select, or_, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import hash_password, verify_password
+from app.modules.base_module.enums import TaskStep
+from app.modules.task.model.task import Task
+from app.modules.task.schemas.task import TaskResponse
+from app.modules.task_operations.model.task_operation import TaskOperation, executors
 from app.modules.users.models.user import User
 from app.modules.users.schemas.user import (
     UserCreate,
@@ -72,6 +76,61 @@ class UserService:
         query = query.offset(skip).limit(limit)
         result = await self.db.execute(query)
         return list(result.scalars().all())
+
+
+    async def get_tasks_in_progress(self, user_id: int) -> Optional[list[TaskResponse]]:
+        user = await self.get_by_id(user_id)
+        if not user:
+            return None
+
+        user_executing = await db.execute(
+            select(Task)
+            .join(TaskOperation)
+            .join(executors)
+            .where(
+                (executors.c.user_id == user_id) &
+                (Task.task_step == TaskStep.IN_PROGRESS)
+            )
+        )
+
+        return list(user_executing.scalars().all())
+
+
+    async def get_tasks_available(self, user_id: int) -> Optional[list[TaskResponse]]:
+        user = await self.get_by_id(user_id)
+        if not user:
+            return None
+
+        user_accessible = await db.execute(
+            select(Task)
+            .join(TaskOperation)
+            .join(TaskOperation.accessed_users)
+            .where(
+                (User.id == user_id) &
+                (Task.task_step == TaskStep.AVAILABLE)
+            )
+        )
+
+        return list(user_accessible.scalars().all())
+
+
+    async def get_tasks_completed(self, user_id: int) -> Optional[list[TaskResponse]]:
+        user = await self.get_by_id(user_id)
+        if not user:
+            return None
+
+        user_completed = await db.execute(
+            select(Task)
+            .join(TaskOperation)
+            .join(executors)
+            .where(
+                (executors.c.user_id == user_id) &
+                (Task.task_step == TaskStep.COMPLETED)
+            )
+        )
+
+        return list(user_completed.scalars().all())
+
 
     async def update(self, user_id, user_in: UserUpdate) -> Optional[User]:
         user = await self.get_by_id(user_id)

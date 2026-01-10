@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
-from typing import List, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Integer,
@@ -37,14 +37,14 @@ class User(Base, TimestampMixin):
     position_id: Mapped[int] = mapped_column(ForeignKey("position.id"), nullable=False)
 
     position: Mapped["Position"] = relationship("Position", back_populates="user")
-    companies: Mapped[List["Company"]] = relationship("Company", back_populates="owner")
+    companies: Mapped[list["Company"]] = relationship("Company", back_populates="owner")
 
-    accessed_operations: Mapped[List["TaskOperation"]] = relationship(
+    accessed_operations: Mapped[list["TaskOperation"]] = relationship(
         "TaskOperation",
         secondary="accessed_users",
         back_populates="accessed_users",
     )
-    executed_operations: Mapped[List["TaskOperation"]] = relationship(
+    executed_operations: Mapped[list["TaskOperation"]] = relationship(
         "TaskOperation",
         secondary="executors",
         back_populates="executors",
