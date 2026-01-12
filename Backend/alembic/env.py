@@ -15,6 +15,9 @@ from app.core.db import Base
 # Импортируй все модели
 from app.modules.users.models.user import User
 from app.modules.users.models.position import Position
+from app.modules.company.model.company import Company
+from app.modules.task.model.task import Task
+from app.modules.task_operations.model.task_operation import TaskOperation
 
 config = context.config
 

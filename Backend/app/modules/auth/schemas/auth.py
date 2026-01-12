@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from typing import Annotated
 
 from pydantic import BaseModel, Field
@@ -23,3 +23,16 @@ class LoginRequest(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class RegisterCompanyRequest(BaseModel):
+    company_name: str
+    company_description: str | None = None
+    date_established: date
+
+    login: str
+    password: str
+    first_name: str
+    last_name: str
+    date_of_birth: date
+    salary: int
