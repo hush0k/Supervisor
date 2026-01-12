@@ -34,10 +34,22 @@ class User(Base, TimestampMixin):
     date_of_birth: Mapped[date] = mapped_column(Date, nullable=False)
     role: Mapped[Role] = mapped_column(String(50), default=Role.USER, nullable=False)
     salary: Mapped[int] = mapped_column(Integer, nullable=False)
-    position_id: Mapped[int] = mapped_column(ForeignKey("position.id"), nullable=False)
+    position_id: Mapped[int | None] = mapped_column(ForeignKey("position.id"), nullable=True)
+    company_id: Mapped[int | None] = mapped_column(ForeignKey("company.id"), nullable=True)  # ← добавь
 
     position: Mapped["Position"] = relationship("Position", back_populates="user")
-    companies: Mapped[list["Company"]] = relationship("Company", back_populates="owner")
+
+    company: Mapped["Company"] = relationship(
+        "Company",
+        back_populates="employees",
+        foreign_keys=[company_id]
+    )
+
+    companies: Mapped[list["Company"]] = relationship(
+        "Company",
+        back_populates="owner",
+        foreign_keys="Company.owner_id"
+    )
 
     accessed_operations: Mapped[list["TaskOperation"]] = relationship(
         "TaskOperation",

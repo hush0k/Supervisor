@@ -83,7 +83,7 @@ class UserService:
         if not user:
             return None
 
-        user_executing = await db.execute(
+        user_executing = await self.db.execute(
             select(Task)
             .join(TaskOperation)
             .join(executors)
@@ -101,7 +101,7 @@ class UserService:
         if not user:
             return None
 
-        user_accessible = await db.execute(
+        user_accessible = await self.db.execute(
             select(Task)
             .join(TaskOperation)
             .join(TaskOperation.accessed_users)
@@ -119,7 +119,7 @@ class UserService:
         if not user:
             return None
 
-        user_completed = await db.execute(
+        user_completed = await self.db.execute(
             select(Task)
             .join(TaskOperation)
             .join(executors)

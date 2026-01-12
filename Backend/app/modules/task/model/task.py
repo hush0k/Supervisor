@@ -5,7 +5,7 @@ from sqlalchemy import (
     String,
     Boolean,
     Enum,
-    Date,
+    Date, ForeignKey,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -16,11 +16,13 @@ from app.modules.base_module.enums import TaskType, City, TaskStep
 
 if TYPE_CHECKING:
     from app.modules.task_operations.model.task_operation import TaskOperation
+    from app.modules.company.model.company import Company
 
 class Task(Base, TimestampMixin):
     __tablename__ = "task"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
+    company_id: Mapped[int] = mapped_column(ForeignKey("company.id"), nullable=False)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     description: Mapped[str] = mapped_column(String(1000), nullable=True)
     deadline: Mapped[Date] = mapped_column(Date, nullable=False)
@@ -34,3 +36,4 @@ class Task(Base, TimestampMixin):
     verified_at: Mapped[Optional[Date]] = mapped_column(Date, nullable=True)
 
     operations: Mapped["TaskOperation"] = relationship("TaskOperation", back_populates="task", uselist=False)
+    company: Mapped["Company"] = relationship("Company")

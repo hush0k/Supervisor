@@ -5,14 +5,14 @@ from fastapi import APIRouter, Depends, status, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
-from app.modules.base_module.dependencies import require_role
+from app.modules.base_module.dependencies import require_role, get_current_user
 from app.modules.base_module.enums import Role, TaskType, City, TaskStep
 from app.modules.task.schemas.task import (
     TaskResponse,
     TaskCreate,
     TaskSort,
     TaskFilter,
-    TaskUpdate
+    TaskUpdate, TakeTaskRequest
 )
 from app.modules.task.services.task import TaskService
 from app.modules.task_operations.schema.task_operation import TaskOperationCreate
@@ -132,3 +132,72 @@ async def delete_task(task_id: int, service: ServiceDep):
         )
 
     await service.delete(task_id)
+
+
+@router.post("/task/{task_id}/take", response_model=TaskResponse)
+async def take_task_endpoint(
+        service: ServiceDep,
+        task_id: int,
+        current_user: Annotated[User, Depends(get_current_user)],
+        body: TakeTaskRequest,
+) -> Optional[TaskResponse]:
+    user_id = current_user.id
+    task = await service.take_task(task_id, user_id, body.executors_ids) # type: ignore
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Задание невозможно взять"
+        )
+
+    return task
+
+
+@router.post("/task/{task_id}/complete", response_model=TaskResponse)
+async def complete_task_endpoint(
+    task_id: int,
+    service: ServiceDep,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> TaskResponse:
+    user_id = current_user.id
+    task = await service.complete_task(task_id, user_id)   # type: ignore
+
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Задание невозможно завершить"
+        )
+
+    return task
+
+@router.post("/task/{task_id}/verify")
+async def verify_task_endpoint(
+        task_id: int,
+        service: ServiceDep,
+        _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
+) -> bool:
+    success = await service.verify_task(task_id)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Задание невозможно проверить"
+        )
+
+    return success
+
+
+@router.post("/task/{task_id}/reject")
+async def reject_task_endpoint(
+        task_id: int,
+        service: ServiceDep,
+        _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
+) -> bool:
+    success = await service.reject_task(task_id)
+
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Задание невозможно отклонить"
+        )
+
+    return success
+
+
+

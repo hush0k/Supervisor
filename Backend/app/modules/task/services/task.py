@@ -28,7 +28,7 @@ class TaskService:
     async def create(self, task_in: TaskCreate) -> TaskResponse:
         task_data = task_in.model_dump()
 
-        task = Task(**task_data)
+        task = Task(**task_data)    # type: ignore
 
         self.db.add(task)
         await self.db.flush()
@@ -102,7 +102,10 @@ class TaskService:
         return True
 
     async def take_task(
-        self, task_id: int, user_id: int, executors_list: Optional[list[int]] = None
+            self,
+            task_id: int,
+            user_id: int,
+            executors_list: Optional[list[int]] = None
     ) -> Optional[TaskResponse]:
         task = await self.get_by_id(task_id)
         if not task or task.task_step != TaskStep.AVAILABLE:
@@ -114,7 +117,7 @@ class TaskService:
         task_operation = result.scalar_one_or_none()
         if not task_operation:
             return None
-
+        # noinspection PyTypeChecker
         check = await self.db.execute(
             select(accessed_users).where(
                 (accessed_users.c.task_id == task_operation.id)
@@ -146,35 +149,61 @@ class TaskService:
         return task
 
 
-async def complete_task(self, task_id: int, user_id: int) -> Optional[TaskResponse]:
-    task = await self.get_by_id(task_id)
-    if not task or task.task_step != TaskStep.IN_PROGRESS:
-        return None
-
-    result = await self.db.execute(
-        select(TaskOperation).where(TaskOperation.task_id == task_id)
-    )
-    task_operation = result.scalar_one_or_none()
-    if not task_operation:
-        return None
-
-    check = await self.db.execute(
-        select(executors).where(
-            (executors.c.task_id == task_operation.id)
-            & (executors.c.user_id == user_id)
-        )
-    )
-    if not check.scalar_one_or_none():
-        return None
-
-    if task.task_type == TaskType.GROUP:
-        user = await self.db.get(User, user_id)
-        if not user or user.role != Role.HEAD:
+    async def complete_task(self, task_id: int, user_id: int) -> Optional[TaskResponse]:
+        task = await self.get_by_id(task_id)
+        if not task or task.task_step != TaskStep.IN_PROGRESS:
             return None
 
-    task.task_step = TaskStep.COMPLETED
-    task.completed_at = date.today()
+        result = await self.db.execute(
+            select(TaskOperation).where(TaskOperation.task_id == task_id)
+        )
+        task_operation = result.scalar_one_or_none()
+        if not task_operation:
+            return None
 
-    await self.db.flush()
-    await self.db.refresh(task)
-    return task
+        # noinspection PyTypeChecker
+        check = await self.db.execute(
+            select(executors).where(
+                (executors.c.task_id == task_operation.id)
+                & (executors.c.user_id == user_id)
+            )
+        )
+        if not check.scalar_one_or_none():
+            return None
+
+        if task.task_type == TaskType.GROUP:
+            user = await self.db.get(User, user_id)
+            if not user or user.role != Role.HEAD:
+                return None
+
+        task.task_step = TaskStep.COMPLETED
+        task.completed_at = date.today()
+
+        await self.db.flush()
+        await self.db.refresh(task)
+        return task
+
+
+    async def verify_task(self, task_id: int) -> Optional[bool]:
+        task = await self.get_by_id(task_id)
+        if not task or task.task_step != TaskStep.COMPLETED:
+            return None
+
+        task.task_step = TaskStep.VERIFIED
+        task.verified_at = date.today()
+
+        await self.db.flush()
+        await self.db.refresh(task)
+        return True
+
+    async def reject_task(self, task_id: int) -> Optional[bool]:
+        task = await self.get_by_id(task_id)
+        if not task or task.task_step != TaskStep.COMPLETED:
+            return None
+
+        task.task_step = TaskStep.IN_PROGRESS
+        task.completed_at = None
+
+        await self.db.flush()
+        await self.db.refresh(task)
+        return False

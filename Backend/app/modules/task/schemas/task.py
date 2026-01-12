@@ -15,6 +15,8 @@ class TaskBase(BaseModel):
     payment: Annotated[int, Field(ge=0, default=0)]
     city: City
     task_step: Annotated[TaskStep, Field(default=TaskStep.AVAILABLE)]
+    executors: list[int]
+    accesses: list[int]
 
     @field_validator("deadline")
     @classmethod
@@ -51,23 +53,14 @@ class TaskUpdate(BaseModel):
     task_step: Optional[TaskStep] = None
 
 
-class TaskResponse(BaseModel):
+class TaskResponse(TaskBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    name: str
-    description: str
-    deadline: date
-    is_active: bool
-    task_type: TaskType
-    payment: int
     duration: int
-    city: City
-    task_step: TaskStep
     completed_at: Optional[date] = None
     verified_at: Optional[date] = None
 
-    executor_id: Optional[int] = None
 
 
 class TaskList(BaseModel):
@@ -101,3 +94,6 @@ class TaskSort(BaseModel):
         "accesses",
     ] = "deadline"
     order: Literal["asc", "desc"] = "asc"
+
+class TakeTaskRequest(BaseModel):
+    executors_ids: List[int] = []
