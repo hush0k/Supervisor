@@ -3,6 +3,7 @@ from typing import Annotated, List, Optional, Literal
 
 from fastapi import APIRouter, Depends, status, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.sql.functions import current_user
 
 from app.core.db import get_db
 from app.modules.base_module.dependencies import require_role, get_current_user
@@ -38,12 +39,13 @@ ServiceOperationDep = Annotated[TaskOperationService, Depends(get_task_operation
 )
 async def create_task(
     task_in: TaskCreate,
+    current_user_id: Annotated[User, Depends(get_current_user)],
     task_operation_in: TaskOperationCreate,
     service: ServiceDep,
     operation_service:  ServiceOperationDep,
-    _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
+    _current_user_req: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
 ) -> TaskResponse:
-    task = await service.create(task_in)
+    task = await service.create(task_in, current_user_id.company_id)    # type: ignore
     await operation_service.create(task.id, task_operation_in)
     return task
 

@@ -25,10 +25,10 @@ class TaskService:
     def __init__(self, db: AsyncSession):
         self.db = db
 
-    async def create(self, task_in: TaskCreate) -> TaskResponse:
+    async def create(self, task_in: TaskCreate, company_id: int) -> TaskResponse:
         task_data = task_in.model_dump()
 
-        task = Task(**task_data)    # type: ignore
+        task = Task(**task_data, company=company_id)    # type: ignore
 
         self.db.add(task)
         await self.db.flush()

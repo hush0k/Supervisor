@@ -83,10 +83,11 @@ class UserService:
         if not user:
             return None
 
+        # noinspection PyTypeChecker
         user_executing = await self.db.execute(
             select(Task)
-            .join(TaskOperation)
-            .join(executors)
+            .join(TaskOperation, Task.id == TaskOperation.task_id)
+            .join(executors, executors.c.id == TaskOperation.id)
             .where(
                 (executors.c.user_id == user_id) &
                 (Task.task_step == TaskStep.IN_PROGRESS)
@@ -119,6 +120,7 @@ class UserService:
         if not user:
             return None
 
+        # noinspection PyTypeChecker
         user_completed = await self.db.execute(
             select(Task)
             .join(TaskOperation)
@@ -154,6 +156,7 @@ class UserService:
         if not user:
             return None
 
+        # noinspection PyTypeChecker
         if not verify_password(passwords.old_password, user.hashed_password):
             return None
 
