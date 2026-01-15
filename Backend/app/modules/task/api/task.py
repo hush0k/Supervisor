@@ -3,7 +3,6 @@ from typing import Annotated, List, Optional, Literal
 
 from fastapi import APIRouter, Depends, status, Query, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql.functions import current_user
 
 from app.core.db import get_db
 from app.modules.base_module.dependencies import require_role, get_current_user
@@ -39,13 +38,12 @@ ServiceOperationDep = Annotated[TaskOperationService, Depends(get_task_operation
 )
 async def create_task(
     task_in: TaskCreate,
-    current_user_id: Annotated[User, Depends(get_current_user)],
     task_operation_in: TaskOperationCreate,
     service: ServiceDep,
     operation_service:  ServiceOperationDep,
-    _current_user_req: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
+    current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
 ) -> TaskResponse:
-    task = await service.create(task_in, current_user_id.company_id)    # type: ignore
+    task = await service.create(task_in, current_user.company_id)    # type: ignore
     await operation_service.create(task.id, task_operation_in)
     return task
 
@@ -136,7 +134,7 @@ async def delete_task(task_id: int, service: ServiceDep):
     await service.delete(task_id)
 
 
-@router.post("/task/{task_id}/take", response_model=TaskResponse)
+@router.post("/{task_id}/take", response_model=TaskResponse)
 async def take_task_endpoint(
         service: ServiceDep,
         task_id: int,
@@ -154,7 +152,7 @@ async def take_task_endpoint(
     return task
 
 
-@router.post("/task/{task_id}/complete", response_model=TaskResponse)
+@router.post("/{task_id}/complete", response_model=TaskResponse)
 async def complete_task_endpoint(
     task_id: int,
     service: ServiceDep,
@@ -170,7 +168,7 @@ async def complete_task_endpoint(
 
     return task
 
-@router.post("/task/{task_id}/verify")
+@router.post("/{task_id}/verify")
 async def verify_task_endpoint(
         task_id: int,
         service: ServiceDep,
@@ -186,7 +184,7 @@ async def verify_task_endpoint(
     return success
 
 
-@router.post("/task/{task_id}/reject")
+@router.post("/{task_id}/reject")
 async def reject_task_endpoint(
         task_id: int,
         service: ServiceDep,
@@ -202,4 +200,64 @@ async def reject_task_endpoint(
     return success
 
 
+@router.get("/{user_id}/accessed-tasks", response_model=list[TaskResponse])
+async def get_accessed_tasks(
+        service: ServiceDep,
+        current_user: Annotated[User, Depends(get_current_user)],
+) -> list[TaskResponse]:
+    user_id = current_user.id
+    tasks = await service.accessed_tasks(user_id)   # type: ignore
 
+    if tasks is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Задания не найдены"
+        )
+
+    return tasks
+
+@router.get("/{user_id}/tasks-in-progress", response_model=list[TaskResponse])
+async def get_tasks_in_progress(
+        service: ServiceDep,
+        current_user: Annotated[User, Depends(get_current_user)],
+) -> list[TaskResponse]:
+    user_id = current_user.id
+    tasks = await service.executing_tasks(user_id)   # type: ignore
+
+    if tasks is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Задания не найдены"
+        )
+
+    return tasks
+
+
+@router.get("/{user_id}/tasks-completed", response_model=list[TaskResponse])
+async def get_tasks_completed(
+        service: ServiceDep,
+        current_user: Annotated[User, Depends(get_current_user)],
+) -> list[TaskResponse]:
+    user_id = current_user.id
+    tasks = await service.completed_tasks(user_id)   # type: ignore
+
+    if tasks is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Задания не найдены"
+        )
+
+    return tasks
+
+
+@router.get("/{user_id}/verified-tasks", response_model=list[TaskResponse])
+async def get_verified_tasks(
+        service: ServiceDep,
+        current_user: Annotated[User, Depends(get_current_user)],
+) -> list[TaskResponse]:
+    user_id = current_user.id
+    tasks = await service.verified_tasks(user_id)   # type: ignore
+
+    if tasks is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Задания не найдены"
+        )
+
+    return tasks

@@ -5,10 +5,6 @@ from typing import Optional, Literal, Annotated, TYPE_CHECKING
 from pydantic import BaseModel, Field, field_validator, ConfigDict, model_validator
 
 from app.modules.base_module.enums import Role
-from app.modules.task.model.task import Task
-
-if TYPE_CHECKING:
-    from app.modules.task.schemas.task import TaskResponse
 
 
 def validate_strong_password(password: str) -> str:
@@ -28,7 +24,7 @@ class UserBase(BaseModel):
     last_name: Annotated[str, Field(min_length=1, max_length=100)]
     date_of_birth: date
     salary: Annotated[int, Field(gt=0)]
-    position_id: int
+    position_id: Optional[int]
 
 
 class UserCreate(UserBase):

@@ -87,7 +87,7 @@ class UserService:
         user_executing = await self.db.execute(
             select(Task)
             .join(TaskOperation, Task.id == TaskOperation.task_id)
-            .join(executors, executors.c.id == TaskOperation.id)
+            .join(executors, executors.c.task_id == TaskOperation.id)
             .where(
                 (executors.c.user_id == user_id) &
                 (Task.task_step == TaskStep.IN_PROGRESS)

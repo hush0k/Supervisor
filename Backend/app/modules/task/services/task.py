@@ -4,6 +4,8 @@ from sqlalchemy import select, asc, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from datetime import date
 
+from sqlalchemy.orm import selectinload
+
 from app.modules.base_module.enums import TaskType, TaskStep, Role
 from app.modules.task.model.task import Task
 from app.modules.task.schemas.task import (
@@ -28,7 +30,7 @@ class TaskService:
     async def create(self, task_in: TaskCreate, company_id: int) -> TaskResponse:
         task_data = task_in.model_dump()
 
-        task = Task(**task_data, company=company_id)    # type: ignore
+        task = Task(**task_data, company_id=company_id)    # type: ignore
 
         self.db.add(task)
         await self.db.flush()
@@ -112,19 +114,19 @@ class TaskService:
             return None
 
         result = await self.db.execute(
-            select(TaskOperation).where(TaskOperation.task_id == task_id)
+            select(TaskOperation)
+            .options(
+                selectinload(TaskOperation.executors),
+                selectinload(TaskOperation.accessed_users),
+            )
+            .where(TaskOperation.task_id == task_id)
         )
+
         task_operation = result.scalar_one_or_none()
         if not task_operation:
             return None
-        # noinspection PyTypeChecker
-        check = await self.db.execute(
-            select(accessed_users).where(
-                (accessed_users.c.task_id == task_operation.id)
-                & (accessed_users.c.user_id == user_id)
-            )
-        )
-        if not check.scalar_one_or_none():
+
+        if user_id not in [u.id for u in task_operation.accessed_users]:
             return None
 
         user = await self.db.get(User, user_id)
@@ -145,7 +147,6 @@ class TaskService:
 
         await self.db.flush()
         await self.db.refresh(task)
-        await self.db.refresh(task_operation)
         return task
 
 
@@ -155,20 +156,19 @@ class TaskService:
             return None
 
         result = await self.db.execute(
-            select(TaskOperation).where(TaskOperation.task_id == task_id)
+            select(TaskOperation)
+            .options(
+                selectinload(TaskOperation.executors),
+                selectinload(TaskOperation.accessed_users),
+            )
+            .where(TaskOperation.task_id == task_id)
         )
+
         task_operation = result.scalar_one_or_none()
         if not task_operation:
             return None
 
-        # noinspection PyTypeChecker
-        check = await self.db.execute(
-            select(executors).where(
-                (executors.c.task_id == task_operation.id)
-                & (executors.c.user_id == user_id)
-            )
-        )
-        if not check.scalar_one_or_none():
+        if user_id not in [u.id for u in task_operation.executors]:
             return None
 
         if task.task_type == TaskType.GROUP:
@@ -207,3 +207,78 @@ class TaskService:
         await self.db.flush()
         await self.db.refresh(task)
         return False
+
+
+    async def accessed_tasks(self, user_id: int) -> Optional[list[TaskResponse]]:
+        user = await self.db.get(User, user_id)
+        if not user:
+            return None
+
+        # noinspection PyTypeChecker
+        user_accessible = await self.db.execute(
+            select(Task)
+            .join(TaskOperation, Task.id == TaskOperation.task_id)
+            .join(accessed_users, accessed_users.c.task_id == TaskOperation.id)
+            .where(
+                (accessed_users.c.user_id == user_id) &
+                (Task.task_step == TaskStep.AVAILABLE)
+            )
+        )
+
+        return list(user_accessible.scalars().all())
+
+
+    async def executing_tasks(self, user_id: int) -> Optional[list[TaskResponse]]:
+        user = await self.db.get(User, user_id)
+        if not user:
+            return None
+
+        # noinspection PyTypeChecker
+        user_executing = await self.db.execute(
+            select(Task)
+            .join(TaskOperation, Task.id == TaskOperation.task_id)
+            .join(executors, executors.c.task_id == TaskOperation.id)
+            .where(
+                (executors.c.user_id == user_id) &
+                (Task.task_step == TaskStep.IN_PROGRESS)
+            )
+        )
+
+        return list(user_executing.scalars().all())
+
+
+    async def completed_tasks(self, user_id: int) -> Optional[list[TaskResponse]]:
+        user = await self.db.get(User, user_id)
+        if not user:
+            return None
+
+        # noinspection PyTypeChecker
+        user_completed = await self.db.execute(
+            select(Task)
+            .join(TaskOperation, Task.id == TaskOperation.task_id)
+            .join(executors, executors.c.task_id == TaskOperation.id)
+            .where(
+                (executors.c.user_id == user_id) &
+                (Task.task_step == TaskStep.COMPLETED)
+            )
+        )
+
+        return list(user_completed.scalars().all())
+
+    async def verified_tasks(self, user_id: int) -> Optional[list[TaskResponse]]:
+        user = await self.db.get(User, user_id)
+        if not user:
+            return None
+
+        # noinspection PyTypeChecker
+        user_verified = await self.db.execute(
+            select(Task)
+            .join(TaskOperation, Task.id == TaskOperation.task_id)
+            .join(executors, executors.c.task_id == TaskOperation.id)
+            .where(
+                (executors.c.user_id == user_id) &
+                (Task.task_step == TaskStep.VERIFIED)
+            )
+        )
+
+        return list(user_verified.scalars().all())
