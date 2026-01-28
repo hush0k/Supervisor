@@ -34,3 +34,10 @@ class TaskStep(StrEnum):
     COMPLETED = "completed"
     VERIFIED = "verified"
 
+class PeriodType(StrEnum):
+    DAY = "day"
+    WEEK = "week"
+    MONTH = "month"
+    YEAR = "year"
+
+

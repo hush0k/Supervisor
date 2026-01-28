@@ -35,7 +35,8 @@ class User(Base, TimestampMixin):
     role: Mapped[Role] = mapped_column(String(50), default=Role.USER, nullable=False)
     salary: Mapped[int] = mapped_column(Integer, nullable=False)
     position_id: Mapped[int | None] = mapped_column(ForeignKey("position.id"), nullable=True)
-    company_id: Mapped[int | None] = mapped_column(ForeignKey("company.id"), nullable=True)  # ← добавь
+    company_id: Mapped[int | None] = mapped_column(ForeignKey("company.id"), nullable=True)
+    bonus: Mapped[int] = mapped_column(Integer, nullable=True)
 
     position: Mapped["Position"] = relationship("Position", back_populates="user")
 

@@ -25,14 +25,16 @@ class UserBase(BaseModel):
     date_of_birth: date
     salary: Annotated[int, Field(gt=0)]
     position_id: Optional[int]
+    bonus: Optional[int]
 
 
 class UserCreate(UserBase):
     password: Annotated[str, Field(min_length=8, max_length=100)]
 
-    _validate_password = field_validator("password")(
-        lambda cls, v: validate_strong_password(v)
-    )
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        return validate_strong_password(v)
 
 
 class UserUpdate(BaseModel):
@@ -50,9 +52,10 @@ class UserUpdatePassword(BaseModel):
     new_password: str
     repeat_new_password: str
 
-    _validate_password = field_validator("new_password")(
-        lambda cls, v: validate_strong_password(v)
-    )
+    @field_validator("new_password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        return validate_strong_password(v)
 
     @model_validator(mode="after")
     def validate_passwords_match(self) -> "UserUpdatePassword":

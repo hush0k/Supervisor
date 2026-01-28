@@ -263,6 +263,7 @@ class TaskService:
             )
         )
 
+
         return list(user_completed.scalars().all())
 
     async def verified_tasks(self, user_id: int) -> Optional[list[TaskResponse]]:
