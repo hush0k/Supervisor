@@ -9,6 +9,7 @@
         --foreground: 15 23 42;
         --card: 255 255 255;
         --card-foreground: 15 23 42;
+        --secondary-card: 249 250 251;
         --primary: 59 130 246;
         --primary-foreground: 255 255 255;
         --primary-hover: 53 121 229;
@@ -25,10 +26,16 @@
         --destructive-hover: 245 213 213;
         --success: 16 185 129;
         --success-foreground: 255 255 255;
+        --gray-standard: 158, 158, 158;
+        --gray-blue: 225 232 246;
+        --gray-light:252 252 253;
         --border: 226 232 240;
         --input: 226 232 240;
         --ring: 59 130 246;
         --radius: 0.2rem;
+        --dark-blue-primary: 10 15 26;
+        --outline-dark-blue: 15 23 42;
+        --outline-dark-foreground: 30 41 59;
     }
 
     .dark {
@@ -62,5 +69,15 @@
     body {
         @apply bg-background text-foreground;
         font-family: 'Inter', system-ui, sans-serif;
+    }
+    input[type="password"]::-ms-reveal,
+    input[type="password"]::-ms-clear {
+        display: none;
+    }
+    input[type="password"]::-webkit-credentials-auto-fill-button {
+        visibility: hidden;
+        pointer-events: none;
+        position: absolute;
+        right: 0;
     }
 }
