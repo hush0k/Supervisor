@@ -1,4 +1,4 @@
-// frontend_exp/src/shared/ui/password-input.jsx
+// Frontend/src/shared/ui/password-input.jsx
 
 import * as React from "react"
 import { cn } from "@/shared/lib/utils"
