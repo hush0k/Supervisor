@@ -33,6 +33,7 @@ class TaskStep(StrEnum):
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
     VERIFIED = "verified"
+    FAILED = "failed"
 
 class PeriodType(StrEnum):
     DAY = "day"

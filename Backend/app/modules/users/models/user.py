@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from app.modules.company.model.company import Company
     from app.modules.users.models.position import Position
     from app.modules.task_operations.model.task_operation import TaskOperation
+    from app.modules.statistics.models.user_statistic import UserStatistic
 
 
 class User(Base, TimestampMixin):
@@ -61,4 +62,9 @@ class User(Base, TimestampMixin):
         "TaskOperation",
         secondary="executors",
         back_populates="executors",
+    )
+
+    user_statistics: Mapped[list["UserStatistic"]] = relationship(
+        "UserStatistic",
+        back_populates="user"
     )

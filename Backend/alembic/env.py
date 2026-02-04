@@ -18,6 +18,8 @@ from app.modules.users.models.position import Position
 from app.modules.company.model.company import Company
 from app.modules.task.model.task import Task
 from app.modules.task_operations.model.task_operation import TaskOperation
+from app.modules.statistics.models.user_statistic import UserStatistic
+from app.modules.statistics.models.company_statistic import CompanyStatistic
 
 config = context.config
 

@@ -29,3 +29,8 @@ class Company(Base, TimestampMixin):
         back_populates="company",
         foreign_keys="User.company_id"
     )
+
+    company_statistics: Mapped[list["CompanyStatistic"]] = relationship(
+        "CompanyStatistic",
+        back_populates="company"
+    )

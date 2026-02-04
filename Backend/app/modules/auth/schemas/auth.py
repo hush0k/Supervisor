@@ -1,7 +1,9 @@
 from datetime import datetime, date
 from typing import Annotated
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
+
+from app.modules.users.schemas.user import validate_strong_password
 
 
 class Token(BaseModel):
@@ -30,9 +32,14 @@ class RegisterCompanyRequest(BaseModel):
     company_description: str | None = None
     date_established: date
 
-    login: str
-    password: str
-    first_name: str
-    last_name: str
+    login: Annotated[str, Field(min_length=3, max_length=100)]
+    password: Annotated[str, Field(min_length=8, max_length=100)]
+    first_name: Annotated[str, Field(min_length=1, max_length=100)]
+    last_name: Annotated[str, Field(min_length=1, max_length=100)]
     date_of_birth: date
-    salary: int
+    salary: Annotated[int, Field(gt=0)]
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        return validate_strong_password(v)

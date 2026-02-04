@@ -5,6 +5,8 @@ from starlette.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.db import init_db
+from app.modules.statistics.models.user_statistic import UserStatistic  # noqa: F401
+from app.modules.statistics.models.company_statistic import CompanyStatistic  # noqa: F401
 from app.modules.auth.api import auth
 from app.modules.company.api import company
 from app.modules.task.api import task

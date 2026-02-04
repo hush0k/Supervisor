@@ -189,6 +189,23 @@ class TaskService:
         if not task or task.task_step != TaskStep.COMPLETED:
             return None
 
+        result = await self.db.execute(
+            select(TaskOperation)
+            .options(selectinload(TaskOperation.executors))
+            .where(TaskOperation.task_id == task_id)
+        )
+        task_operation = result.scalar_one_or_none()
+
+        if not task_operation:
+            return None
+
+        for executor in task_operation.executors:
+            if executor.bonus is None:
+                executor.bonus = task.payment
+            else:
+                executor.bonus += task.payment
+
+
         task.task_step = TaskStep.VERIFIED
         task.verified_at = date.today()
 
@@ -201,7 +218,7 @@ class TaskService:
         if not task or task.task_step != TaskStep.COMPLETED:
             return None
 
-        task.task_step = TaskStep.IN_PROGRESS
+        task.task_step = TaskStep.FAILED
         task.completed_at = None
 
         await self.db.flush()
@@ -283,3 +300,21 @@ class TaskService:
         )
 
         return list(user_verified.scalars().all())
+
+    async def failed_tasks(self, user_id: int) -> Optional[list[TaskResponse]]:
+        user = await self.db.get(User, user_id)
+        if not user:
+            return None
+
+        # noinspection PyTypeChecker
+        user_failed = await self.db.execute(
+            select(Task)
+            .join(TaskOperation, Task.id == TaskOperation.task_id)
+            .join(executors, executors.c.task_id == TaskOperation.id)
+            .where(
+                (executors.c.user_id == user_id) &
+                (Task.task_step == TaskStep.FAILED)
+            )
+        )
+
+        return list(user_failed.scalars().all())
