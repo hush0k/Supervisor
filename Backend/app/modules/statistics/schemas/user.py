@@ -22,6 +22,7 @@ class UserStatisticsResponse(BaseModel):
     count_of_task_as_head: int
     avg_size_of_group: float
     percent_of_success_as_head: float
+    total_points: int
 
     created_at: datetime
     updated_at: datetime
@@ -29,6 +30,9 @@ class UserStatisticsResponse(BaseModel):
 
 class UserDashboard(BaseModel):
     tasks_in_progress: int
+    current_month_points: int
+    last_month_points: int
+    leaderboard_position: int | None
     tasks_available: int
     tasks_verified: int
     profit_earned: int
@@ -42,8 +46,6 @@ class UserDashboard(BaseModel):
     group_success_rate: float
 
 
-class LeaderBordEntity(BaseModel):
-    user_id: int
-    user_first_name: str
-    user_second_name: str
+
+
     

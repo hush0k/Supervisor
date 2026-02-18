@@ -6,7 +6,7 @@ from datetime import date
 
 from sqlalchemy.orm import selectinload
 
-from app.modules.base_module.enums import TaskType, TaskStep, Role
+from app.modules.base_module.enums import TaskType, TaskStep, Role, QualityStatus
 from app.modules.task.model.task import Task
 from app.modules.task.schemas.task import (
     TaskCreate,
@@ -207,6 +207,7 @@ class TaskService:
 
 
         task.task_step = TaskStep.VERIFIED
+        task.quality_status = QualityStatus.VERIFIED
         task.verified_at = date.today()
 
         await self.db.flush()
@@ -219,6 +220,7 @@ class TaskService:
             return None
 
         task.task_step = TaskStep.FAILED
+        task.quality_status = QualityStatus.FAILED
         task.completed_at = None
 
         await self.db.flush()

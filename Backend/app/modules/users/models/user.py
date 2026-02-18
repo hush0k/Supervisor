@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from app.modules.users.models.position import Position
     from app.modules.task_operations.model.task_operation import TaskOperation
     from app.modules.statistics.models.user_statistic import UserStatistic
+    from app.modules.statistics.models.task_point_history import TaskPointHistory
 
 
 class User(Base, TimestampMixin):
@@ -67,4 +68,9 @@ class User(Base, TimestampMixin):
     user_statistics: Mapped[list["UserStatistic"]] = relationship(
         "UserStatistic",
         back_populates="user"
+    )
+
+    task_point_history: Mapped[list["TaskPointHistory"]] = relationship(
+        "TaskPointHistory",
+        back_populates="user",
     )

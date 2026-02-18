@@ -26,6 +26,7 @@ class UserStatistic(Base, TimestampMixin):
     count_of_completed_tasks: Mapped[int] = mapped_column(Integer, default=0)
     count_of_verified_tasks: Mapped[int] = mapped_column(Integer, default=0)
     count_of_failed_tasks: Mapped[int] = mapped_column(Integer, default=0)
+    total_points: Mapped[int] = mapped_column(Integer, default=0)
 
     # Time management statistics
     completed_before_deadline: Mapped[int] = mapped_column(Integer, default=0)

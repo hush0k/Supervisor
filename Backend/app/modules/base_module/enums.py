@@ -41,4 +41,14 @@ class PeriodType(StrEnum):
     MONTH = "month"
     YEAR = "year"
 
+class Rank(StrEnum):
+    S = "s"
+    A = "a"
+    B = "b"
+    C = "c"
+
+class QualityStatus(StrEnum):
+    VERIFIED = "verified"
+    FAILED = "failed"
+
 
