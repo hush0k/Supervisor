@@ -26,6 +26,7 @@ class UserBase(BaseModel):
     salary: Annotated[int, Field(gt=0)]
     position_id: Optional[int]
     bonus: Optional[int]
+    company_id: Optional[int]
 
 
 class UserCreate(UserBase):

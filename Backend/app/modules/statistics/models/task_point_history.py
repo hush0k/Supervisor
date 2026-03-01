@@ -1,12 +1,11 @@
 from datetime import date, datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, DateTime, Integer, Float, Boolean, ForeignKey, Enum, Index
+from sqlalchemy import Date, DateTime, Integer, Float, ForeignKey, Index
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.db import Base
 from app.modules.base_module.base_class import TimestampMixin
-from app.modules.base_module.enums import Rank, QualityStatus
 
 if TYPE_CHECKING:
     from app.modules.task.model.task import Task
@@ -22,23 +21,18 @@ class TaskPointHistory(Base, TimestampMixin):
     period_date: Mapped[date] = mapped_column(Date, nullable=False)
 
     # Input data - что было на момент расчета
-    base_points: Mapped[int] = mapped_column(Integer, nullable=False)
-    rank: Mapped[Rank] = mapped_column(Enum(Rank), nullable=False)
     deadline: Mapped[date] = mapped_column(Date, nullable=False)
     completed_at: Mapped[date] = mapped_column(Date, nullable=False)
-    quality_status: Mapped[QualityStatus] = mapped_column(Enum(QualityStatus), nullable=False)
 
     # Calculated data - что посчитали
     delay_days: Mapped[int] = mapped_column(Integer, nullable=False)
+    difficulty_multiplier: Mapped[float] = mapped_column(Float, nullable=False)
     deadline_multiplier: Mapped[float] = mapped_column(Float, nullable=False)
-    success_multiplier: Mapped[float] = mapped_column(Float, nullable=False)
-    preliminary_points: Mapped[int] = mapped_column(Integer, nullable=False)
-    final_points: Mapped[int | None] = mapped_column(Integer, nullable=True)
-    is_finalized: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)
+    raw_points: Mapped[float] = mapped_column(Float, nullable=False)
+    points: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Timestamps
     calculated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
-    finalized_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
     # Relationships
     task: Mapped["Task"] = relationship("Task", back_populates="task_point_history")
@@ -46,7 +40,6 @@ class TaskPointHistory(Base, TimestampMixin):
 
     # Indexes для производительности
     __table_args__ = (
-        Index('idx_user_period', 'user_id', 'period_date'),
-        Index('idx_task', 'task_id'),
-        Index('idx_finalized', 'is_finalized', 'period_date'),
+        Index("idx_tph_user_period", "user_id", "period_date"),
+        Index("idx_tph_task", "task_id"),
     )

@@ -7,6 +7,7 @@ from datetime import date
 from sqlalchemy.orm import selectinload
 
 from app.modules.base_module.enums import TaskType, TaskStep, Role, QualityStatus
+from app.modules.statistics.services.points_calculation import PointsCalculationService
 from app.modules.task.model.task import Task
 from app.modules.task.schemas.task import (
     TaskCreate,
@@ -189,6 +190,8 @@ class TaskService:
         if not task or task.task_step != TaskStep.COMPLETED:
             return None
 
+        points_calculation_service = PointsCalculationService(self.db)
+
         result = await self.db.execute(
             select(TaskOperation)
             .options(selectinload(TaskOperation.executors))
@@ -200,6 +203,7 @@ class TaskService:
             return None
 
         for executor in task_operation.executors:
+            await points_calculation_service.calculate_and_save(task, user_id=task_operation.executors.id)  # type: ignore
             if executor.bonus is None:
                 executor.bonus = task.payment
             else:
@@ -209,6 +213,7 @@ class TaskService:
         task.task_step = TaskStep.VERIFIED
         task.quality_status = QualityStatus.VERIFIED
         task.verified_at = date.today()
+
 
         await self.db.flush()
         await self.db.refresh(task)

@@ -1,11 +1,16 @@
 from datetime import datetime, date
-from typing import List
+from typing import List, TYPE_CHECKING
 
 from sqlalchemy import Integer, String, ForeignKey, Date
 from sqlalchemy.orm import Mapped, relationship, mapped_column
 
 from app.modules.base_module.base_class import TimestampMixin
 from app.core.db import Base
+
+if TYPE_CHECKING:
+    from app.modules.users.models.user import User
+    from app.modules.statistics.models.company_statistic import CompanyStatistic
+    from app.modules.statistics.models.difficulty_config import DifficultyConfig
 
 
 class Company(Base, TimestampMixin):
@@ -33,4 +38,9 @@ class Company(Base, TimestampMixin):
     company_statistics: Mapped[list["CompanyStatistic"]] = relationship(
         "CompanyStatistic",
         back_populates="company"
+    )
+
+    difficulty_config: Mapped["DifficultyConfig"] = relationship(
+        "DifficultyConfig",
+        back_populates="company",
     )
