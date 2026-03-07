@@ -20,6 +20,8 @@ from app.modules.task.model.task import Task
 from app.modules.task_operations.model.task_operation import TaskOperation
 from app.modules.statistics.models.user_statistic import UserStatistic
 from app.modules.statistics.models.company_statistic import CompanyStatistic
+from app.modules.statistics.models.task_point_history import TaskPointHistory
+from app.modules.statistics.models.difficulty_config import DifficultyConfig
 
 config = context.config
 
