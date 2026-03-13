@@ -35,11 +35,8 @@ class UserDashboard(BaseModel):
     leaderboard_position: int | None
     tasks_available: int
     tasks_verified: int
-    profit_earned: int
+    profit_for_period: int
     success_rate: float
-    avg_completion_days: float
-    lifetime_tasks_verified: int
-    lifetime_profit: int
 
     group_tasks_completed: int
     avg_team_size: float
