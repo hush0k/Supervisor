@@ -15,7 +15,7 @@ from app.modules.users.schemas.user import (
     UserUpdate,
     UserUpdatePassword,
     UserFilter,
-    UserSort,
+    UserSort, UserResponse,
 )
 
 
@@ -175,3 +175,16 @@ class UserService:
 
         await self.db.delete(user)
         return True
+
+    async def get_my_employees(self, user_id: int) -> list[UserResponse] | None:
+        user = await self.get_by_id(user_id)
+
+        if not user:
+            return None
+
+        employees = await self.db.execute(
+            select(User)
+            .where(User.company_id == user.company_id)
+        )
+
+        return list(employees.scalars().all())
