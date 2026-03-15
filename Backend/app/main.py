@@ -6,6 +6,7 @@ from starlette.middleware.cors import CORSMiddleware
 from app.core.config import settings
 from app.core.db import init_db
 from app.modules.statistics.api.task_points_history import task_points_history_service
+from app.modules.statistics.models import user_statistic
 
 # Import all models to register them with SQLAlchemy before any queries
 # Order matters: import models that are referenced by relationships FIRST
@@ -22,7 +23,7 @@ from app.modules.auth.api import auth
 from app.modules.company.api import company
 from app.modules.task.api import task
 from app.modules.users.api import user, position
-from app.modules.statistics.api import difficulty_config, task_points_history
+from app.modules.statistics.api import difficulty_config, task_points_history, user_statistics
 
 
 @asynccontextmanager
@@ -54,6 +55,7 @@ def create_app() -> FastAPI:
     app.include_router(task.router, prefix="/api/v1")
     app.include_router(difficulty_config.router, prefix="/api/v1")
     app.include_router(task_points_history.router, prefix="/api/v1")
+    app.include_router(user_statistics.router, prefix="/api/v1")
 
     return app
 

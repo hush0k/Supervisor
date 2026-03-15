@@ -1,4 +1,4 @@
-from enum import StrEnum, Enum
+from enum import StrEnum, Enum, IntEnum
 
 
 class Role(StrEnum):
@@ -35,7 +35,7 @@ class TaskStep(StrEnum):
     VERIFIED = "verified"
     FAILED = "failed"
 
-class PeriodType(Enum):
+class PeriodType(IntEnum):
     DAY = 1
     WEEK = 7
     MONTH = 30
