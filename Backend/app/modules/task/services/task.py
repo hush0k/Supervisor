@@ -203,7 +203,7 @@ class TaskService:
             return None
 
         for executor in task_operation.executors:
-            await points_calculation_service.calculate_and_save(task, user_id=task_operation.executors.id)  # type: ignore
+            await points_calculation_service.calculate_and_save(task, user_id=executor.id)  # type: ignore
             if executor.bonus is None:
                 executor.bonus = task.payment
             else:

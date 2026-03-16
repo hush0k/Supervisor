@@ -184,7 +184,10 @@ class UserService:
 
         employees = await self.db.execute(
             select(User)
-            .where(User.company_id == user.company_id)
+            .where(
+                User.company_id == user.company_id,
+                User.id != user_id
+            )
         )
 
         return list(employees.scalars().all())

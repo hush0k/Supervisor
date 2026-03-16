@@ -2,9 +2,12 @@ from typing import List, Optional, Literal, Annotated
 
 from fastapi import APIRouter, Depends, status as http_status, HTTPException, Query
 from sqlalchemy.ext.asyncio import AsyncSession
+from starlette import status
 
 from app.core.db import get_db
+from app.modules.base_module.dependencies import get_current_user
 from app.modules.base_module.enums import Role
+from app.modules.users.models.user import User
 from app.modules.users.services.user import UserService
 from app.modules.users.schemas.user import (
     UserResponse,
@@ -32,6 +35,18 @@ async def create_user_endpoint(
     user_in: UserCreate, service: ServiceDep
 ) -> UserResponse:
     return await service.create(user_in)
+
+
+@router.get("/my-employees", response_model=list[UserResponse])
+async def get_employees(
+        current_user: Annotated[User, Depends(get_current_user)],
+        service: ServiceDep,
+) -> list[UserResponse]:
+    employees = await service.get_my_employees(current_user.id)
+    if not employees:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Нет еще данных о работниках")
+
+    return employees
 
 
 @router.get("/{user_id}", response_model=UserResponse)
@@ -107,3 +122,4 @@ async def delete_user(user_id: int, service: ServiceDep):
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND, detail="Пользователь не найден"
         )
+

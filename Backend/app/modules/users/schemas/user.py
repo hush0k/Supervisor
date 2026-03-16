@@ -8,7 +8,7 @@ from app.modules.base_module.enums import Role
 
 
 def validate_strong_password(password: str) -> str:
-    pattern = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$"
+    pattern = r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!_%*?&])[A-Za-z\d@$!%*?&]{8,}$"
     if not re.match(pattern, password):
         raise ValueError(
             "Пароль должен содержать: "

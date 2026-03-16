@@ -7,7 +7,7 @@ from sqlalchemy.ext.asyncio import async_engine_from_config
 from alembic import context
 
 # Добавляем корневую директорию проекта в путь для импортов
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from app.core.config import settings
 from app.core.db import Base

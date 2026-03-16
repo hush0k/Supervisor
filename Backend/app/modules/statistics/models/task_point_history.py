@@ -32,7 +32,7 @@ class TaskPointHistory(Base, TimestampMixin):
     points: Mapped[int] = mapped_column(Integer, nullable=False)
 
     # Timestamps
-    calculated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False)
+    calculated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now())
 
     # Relationships
     task: Mapped["Task"] = relationship("Task", back_populates="task_point_history")

@@ -44,13 +44,13 @@ class DifficultyConfigService:
 
         return config_data
 
-    async def get_by_company_id(self, company_id: int) -> DifficultyConfigResponse:
+    async def get_by_company_id(self, company_id: int) -> DifficultyConfigResponse | None:
         config_data = await self.db.execute(
             select(DifficultyConfig).where(DifficultyConfig.company_id == company_id)
         )
         config_data = config_data.scalar_one_or_none()
         if config_data is None:
-            raise ValueError("DifficultyConfig not found for the given company_id")
+            return None
 
         return config_data
 
