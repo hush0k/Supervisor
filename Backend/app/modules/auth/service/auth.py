@@ -6,6 +6,7 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.security import verify_password
@@ -81,7 +82,9 @@ class AuthService:
             )
 
         result = await self.db.execute(
-            select(User).where(User.id == int(token_data.sub))
+            select(User)
+            .where(User.id == int(token_data.sub))
+            .options(selectinload(User.position))
         )
         user = result.scalar_one_or_none()
 

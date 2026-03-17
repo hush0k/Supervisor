@@ -2,8 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuthStore } from '@/entities/user/model/store'
 import LoginPage from '@/pages/login/LoginPage'
 import RegisterPage from '@/pages/register/RegisterPage.jsx'
-import {HomePage} from "@/pages/home/homePage.jsx";
-import {DashboardPage} from "@/pages/dashboard/dashboardPage.jsx";
+import {HomePage} from "@/pages/home/HomePage.jsx";
+import {DashboardPage} from "@/pages/dashboard/DashboardPage.jsx";
 
 function ProtectedRoute({ children }) {
     const { isAuthenticated } = useAuthStore()

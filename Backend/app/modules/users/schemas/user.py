@@ -5,6 +5,7 @@ from typing import Optional, Literal, Annotated, TYPE_CHECKING
 from pydantic import BaseModel, Field, field_validator, ConfigDict, model_validator
 
 from app.modules.base_module.enums import Role
+from app.modules.users.schemas.position import PositionResponse
 
 
 def validate_strong_password(password: str) -> str:
@@ -70,6 +71,7 @@ class UserResponse(UserBase):
 
     id: int
     role: Role
+    position: Optional[PositionResponse] = None
     created_at: datetime
     updated_at: datetime
 

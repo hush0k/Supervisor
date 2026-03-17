@@ -30,9 +30,8 @@ export function AutoCarousel() {
                         const Icon = card.icon;
 
                         return (
-                            <CarouselItem>
+                            <CarouselItem key={card.id}>
                                 <Card
-                                    key={card.id}
                                     className="flex flex-col space-y-4 p-8"
                                 >
                                     <div className="flex justify-center items-center w-14 h-14 bg-gray-800">

@@ -5,10 +5,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
 from app.modules.base_module.enums import PeriodType
+from app.modules.statistics.schemas.chart import ChartDataResponse
 from app.modules.statistics.schemas.user import UserStatisticsResponse, UserDashboard
 from app.modules.statistics.services.user_statistics import UserStatisticsService
 
-router = APIRouter(prefix="/statistics", tags=["User statistics"])
+router = APIRouter(prefix="/user_statistics", tags=["User statistics"])
 
 def get_statistics_service(db: Annotated[AsyncSession, Depends(get_db)]) -> UserStatisticsService:
     return UserStatisticsService(db)
@@ -25,3 +26,13 @@ async def calc_statistics(user_id: int, period_type: PeriodType, service: Servic
 @router.get("/dashboard/{user_id}")
 async def dashboard_statistics(user_id: int, period_type: PeriodType, service: ServiceDep) -> UserDashboard:
     return await service.get_dashboard(user_id, period_type)
+
+
+@router.get("/chart/{user_id}")
+async def get_chart(
+        service: ServiceDep,
+        user_id: int,
+        metric: str = "total_points",
+) -> ChartDataResponse:
+    data = await service.get_chart_data(user_id, metric)
+    return ChartDataResponse(metric=metric, data=data)

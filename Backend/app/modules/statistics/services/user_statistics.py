@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from typing import Literal
 
 from sqlalchemy import select, func
 from sqlalchemy.dialects.postgresql import insert
@@ -7,6 +8,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.modules.base_module.enums import TaskStep, PeriodType, Role, TaskType
 from app.modules.statistics.models.task_point_history import TaskPointHistory
 from app.modules.statistics.models.user_statistic import UserStatistic
+from app.modules.statistics.schemas.chart import ChartPoint
+from app.modules.statistics.schemas.leaderbord import LeaderBoardEntity
 from app.modules.statistics.schemas.user import UserStatisticsResponse, UserDashboard
 from app.modules.task.model.task import Task
 from app.modules.task_operations.model.task_operation import TaskOperation, executors, accessed_users
@@ -328,6 +331,108 @@ class UserStatisticsService:
             avg_team_size=float(m.avg_team_size),
             group_success_rate=(stats.group_verified / total_group * 100) if total_group > 0 else 0.0,
         )
+
+
+    async def get_chart_data(
+            self,
+            user_id: int,
+            metric: str,
+            limit: int = 15
+    ) -> list[ChartPoint] | None:
+        user = await self.db.get(User, user_id)
+        if not user:
+            return None
+
+        result = await self.db.execute(
+            select(UserStatistic.period_date, getattr(UserStatistic, metric))
+            .where(
+                UserStatistic.user_id == user_id,
+                UserStatistic.period_type == PeriodType.MONTH,
+            )
+            .order_by(UserStatistic.period_date.asc())
+            .limit(limit)
+        )
+
+        return [ChartPoint(date=row.period_date, value=row[1]) for row in result.all()]
+
+
+    async def get_leaderboard(
+            self,
+            company_id: int,
+            sort_field: Literal["total_points", "success_rate"] = "total_points",
+            sort_order: Literal["desc", "asc"] = "desc",
+            min_success_rate: float = 0.0,
+            position_id: int | None = None,
+            limit: int = 50
+    ) -> list[LeaderBoardEntity]:
+        today = date.today()
+        first_day_of_month = today.replace(day=1)
+
+
+        order_col = (
+            UserStatistic.total_points if sort_field == "total_points"
+            else UserStatistic.percent_of_success
+        )
+
+        order_expr = order_col.asc() if sort_order == "asc" else order_col.desc()
+
+        ranked_subq = (
+            select(
+                UserStatistic.user_id,
+                func.rank().over(order_by=order_expr).label("rank"),
+            )
+            .where(
+                UserStatistic.period_type == PeriodType.MONTH,
+                UserStatistic.period_date >= first_day_of_month,
+                UserStatistic.percent_of_success >= min_success_rate,
+                UserStatistic.user_id.in_(
+                    select(User.id).where(User.company_id == company_id)
+                )
+
+            )
+            .subquery()
+        )
+
+        filters = [
+            User.company_id == company_id,
+            *([] if not position_id is None else [User.position_id == position_id]),
+        ]
+
+        result = await self.db.execute(
+            select(
+                User.id.label("user_id"),
+                User.first_name,
+                User.last_name,
+                ranked_subq.c.rank.label("rank_position"),
+                UserStatistic.total_points,
+                UserStatistic.percent_of_success.label("success_rate"),
+            )
+            .join(UserStatistic, UserStatistic.user_id == User.id)
+            .join(ranked_subq, ranked_subq.c.user_id == User.id) #type: ignore
+            .where(
+                *filters,
+                UserStatistic.period_type == PeriodType.MONTH,
+                UserStatistic.period_date >= first_day_of_month
+            )
+            .order_by(order_expr)
+            .limit(limit)
+        )
+
+        return [
+            LeaderBoardEntity(
+                user_id=row.user_id,
+                user_first_name=row.first_name,
+                user_last_name=row.last_name,
+                rank_position=row.rank_position,
+                total_points=row.total_points,
+                success_rate=float(row.success_rate),
+            )
+            for row in result.all()
+        ]
+
+
+
+
 
 
 

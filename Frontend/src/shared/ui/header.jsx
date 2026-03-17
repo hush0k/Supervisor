@@ -1,4 +1,5 @@
-import {useLocation, useNavigate} from "react-router-dom";
+import {useEffect, useState} from "react";
+import {useNavigate} from "react-router-dom";
 import { Logo } from "@/shared/ui/logo.jsx";
 import { User, Menu, X }  from "lucide-react";
 import { Button } from "@/shared/ui/button.jsx";
@@ -12,15 +13,31 @@ import {
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/shared/ui/dropdown-menu.jsx";
 import {useAuthStore} from "@/entities/user/model/store.js";
 import logoSvg from '@/assets/logos/supervisor.svg'
-import {useState} from "react";
+import { Sheet, SheetContent, SheetTrigger } from "@/shared/ui/sheet"
+import { GrLogout } from "react-icons/gr";
+import { MdDashboard } from "react-icons/md";
+import { MdLeaderboard } from "react-icons/md";
+import { BsBuildingFill } from "react-icons/bs";
+import { BiTask } from "react-icons/bi";
+
 
 export function Header() {
     const navigate = useNavigate();
-    const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
     const user = useAuthStore((state) => state.user);
     const {isAuthenticated} = useAuthStore();
+    const [sheetOpen, setSheetOpen] = useState(false);
 
-    const displayName = user
+    useEffect(() => {
+        const handleResize = () => {
+            if (window.innerWidth >= 1024) {
+                setSheetOpen(false);
+            }
+        };
+        window.addEventListener("resize", handleResize);
+        return () => window.removeEventListener("resize", handleResize);
+    }, []);
+
+    const displayName = user?.last_name && user?.first_name
         ? `${user.last_name[0]}. ${user.first_name}`
         : "Профиль"
 
@@ -39,14 +56,13 @@ export function Header() {
 
     const handleNavigation = (path) => {
         navigate(path);
-        setMobileMenuOpen(false);
     };
 
     const menuItems = [
-        {label: "Главная", path: "/dashboard"},
-        {label: "Рейтинг", path: "/rating"},
-        {label: "KPI", path: "/kpi"},
-        {label: "Моя компания", path: "/company"},
+        {label: "Главная", path: "/dashboard", icon: <MdDashboard />},
+        {label: "Рейтинг", path: "/rating", icon: <MdLeaderboard />},
+        {label: "Задачи", path: "/tasks", icon: <BiTask />},
+        {label: "Моя компания", path: "/company", icon: <BsBuildingFill />},
     ];
 
 
@@ -94,44 +110,49 @@ export function Header() {
                 </DropdownMenu>
             </div>
 
-            <button
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="lg:hidden p-2"
-            >
-                {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-            </button>
+            <div className="lg:hidden">
+                <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                    <SheetTrigger asChild>
+                        <button className="p-2"><Menu size={24} /></button>
+                    </SheetTrigger>
+                    <SheetContent side="left" className="w-[320px] p-0 flex flex-col ">
+                        <button  onClick={() => navigate('/profile')} className="mt-14 py-2 px-8 border-t border-b border-gray-100 flex flex-row space-x-4">
+                            <div>
+                                <img
+                                    src="https://img.freepik.com/premium-psd/3d-avatar-character_975163-673.jpg?semt=ais_hybrid&w=740&q=80"
+                                    alt="avatar for profile"
+                                    className="w-12"
+                                />
+                            </div>
 
-            {mobileMenuOpen && (
-                <div className="lg:hidden fixed inset-0 top-16 bg-white z-50 border-t">
-                    <nav className="flex flex-col p-4 space-y-2">
-                        {menuItems.map((item) => (
-                            <button
-                                key={item.path}
-                                onClick={() => handleNavigation(item.path)}
-                                className="text-left px-4 py-3 hover:bg-accent rounded-md transition-colors"
-                            >
-                                {item.label}
-                            </button>
-                        ))}
-
-                        <div className="border-t pt-4 mt-4 space-y-2">
-                            <button
-                                onClick={() => handleNavigation("/profile")}
-                                className="text-left px-4 py-3 hover:bg-accent rounded-md transition-colors w-full"
-                            >
-                                Профиль
-                            </button>
-
-                            <button
-                                onClick={logoutAction}
-                                className="text-left px-4 py-3 text-destructive-foreground hover:bg-destructive rounded-md transition-colors w-full"
-                            >
+                            <div className="flex flex-col justify-around text-left">
+                                <p className="font-bold">{user?.first_name[0]}. {user?.last_name}</p>
+                                <p className="text-sm text-muted-foreground">{user?.position?.name}</p>
+                            </div>
+                        </button>
+                        <nav className="flex flex-col py-4 space-y-2">
+                            {menuItems.map((item) => (
+                                <button
+                                    key={item.path}
+                                    onClick={() => navigate(item.path)}
+                                    className="group text-left  flex flex-row items-center hover:bg-accent active:bg-accent rounded-md transition-colors"
+                                >
+                                    <div className="h-10 w-1 mr-6 bg-transparent group-hover:bg-primary group-active:bg-primary transition-colors"></div>
+                                    <div className="flex flex-row items-center gap-2 group-hover:text-primary group-active:text-primary">
+                                        {item.icon}{item.label}
+                                    </div>
+                                </button>
+                            ))}
+                        </nav>
+                        <div className="flex flex-col border-t border-b py-4 mt-auto mb-14 space-y-2 items-center">
+                            <Button variant="destructive" className="font-semibold">
+                                <GrLogout />
                                 Выйти
-                            </button>
+                            </Button>
                         </div>
-                    </nav>
-                </div>
-            )}
+                    </SheetContent>
+                </Sheet>
+            </div>
         </header>
     );
 }
