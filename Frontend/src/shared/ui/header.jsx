@@ -21,7 +21,7 @@ import { BsBuildingFill } from "react-icons/bs";
 import { BiTask } from "react-icons/bi";
 
 
-export function Header() {
+export function Header({ variant = "default" }) {
     const navigate = useNavigate();
     const user = useAuthStore((state) => state.user);
     const {isAuthenticated} = useAuthStore();
@@ -47,11 +47,7 @@ export function Header() {
     }
 
     const loginAction = () => {
-        if (!isAuthenticated) {
-            navigate("/home")
-        } else {
-            navigate("/dashboard")
-        }
+        navigate(isAuthenticated ? "/dashboard" : "/home");
     };
 
     const handleNavigation = (path) => {
@@ -66,7 +62,86 @@ export function Header() {
     ];
 
 
+    if (variant === "logo-left") {
+        return (
+            <header className="flex flex-row items-center bg-white h-16 border shadow-accent w-full">
+                <div className="ml-6">
+                    <Logo size={45} onClick={loginAction} src={logoSvg} />
+                </div>
 
+                <div className="hidden lg:flex flex-row space-x-4 items-center ml-auto mr-6">
+                    <NavigationMenu>
+                        <NavigationMenuList>
+                            {menuItems.map((item) => (
+                                <NavigationMenuItem key={item.path}>
+                                    <NavigationMenuLink
+                                        onClick={() => navigate(item.path)}
+                                        className={navigationMenuTriggerStyle()}
+                                    >
+                                        {item.label}
+                                    </NavigationMenuLink>
+                                </NavigationMenuItem>
+                            ))}
+                        </NavigationMenuList>
+                    </NavigationMenu>
+
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button>
+                                <User className="mr-2 h-4 w-4" />
+                                {displayName}
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-white w-[var(--radix-dropdown-menu-trigger-width)]">
+                            <DropdownMenuItem onClick={() => navigate('/profile')}>Профиль</DropdownMenuItem>
+                            <DropdownMenuItem onClick={logoutAction}>Выйти</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+
+                <div className="lg:hidden ml-auto mr-4">
+                    <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+                        <SheetTrigger asChild>
+                            <button className="p-2"><Menu size={24} /></button>
+                        </SheetTrigger>
+                        <SheetContent side="left" className="w-[320px] p-0 flex flex-col">
+                            <button onClick={() => navigate('/profile')} className="mt-14 py-2 px-8 border-t border-b border-gray-100 flex flex-row space-x-4">
+                                <img
+                                    src="https://img.freepik.com/premium-psd/3d-avatar-character_975163-673.jpg?semt=ais_hybrid&w=740&q=80"
+                                    alt="avatar"
+                                    className="w-12"
+                                />
+                                <div className="flex flex-col justify-around text-left">
+                                    <p className="font-bold">{user?.first_name[0]}. {user?.last_name}</p>
+                                    <p className="text-sm text-muted-foreground">{user?.position?.name}</p>
+                                </div>
+                            </button>
+                            <nav className="flex flex-col py-4 space-y-2">
+                                {menuItems.map((item) => (
+                                    <button
+                                        key={item.path}
+                                        onClick={() => navigate(item.path)}
+                                        className="group text-left flex flex-row items-center hover:bg-accent active:bg-accent rounded-md transition-colors"
+                                    >
+                                        <div className="h-10 w-1 mr-6 bg-transparent group-hover:bg-primary transition-colors"></div>
+                                        <div className="flex flex-row items-center gap-2 group-hover:text-primary">
+                                            {item.icon}{item.label}
+                                        </div>
+                                    </button>
+                                ))}
+                            </nav>
+                            <div className="flex flex-col border-t border-b py-4 mt-auto mb-14 space-y-2 items-center">
+                                <Button variant="destructive" className="font-semibold" onClick={logoutAction}>
+                                    <GrLogout />
+                                    Выйти
+                                </Button>
+                            </div>
+                        </SheetContent>
+                    </Sheet>
+                </div>
+            </header>
+        );
+    }
 
 
     return (
