@@ -395,7 +395,7 @@ class UserStatisticsService:
 
         filters = [
             User.company_id == company_id,
-            *([] if not position_id is None else [User.position_id == position_id]),
+            *([] if position_id is None else [User.position_id == position_id]),
         ]
 
         result = await self.db.execute(

@@ -39,6 +39,8 @@ class User(Base, TimestampMixin):
     position_id: Mapped[int | None] = mapped_column(ForeignKey("position.id"), nullable=True)
     company_id: Mapped[int | None] = mapped_column(ForeignKey("company.id"), nullable=True)
     bonus: Mapped[int] = mapped_column(Integer, nullable=True)
+    avatar_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
+
 
     position: Mapped["Position"] = relationship("Position", back_populates="user")
 

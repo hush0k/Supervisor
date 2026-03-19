@@ -194,7 +194,7 @@ export function Header({ variant = "default" }) {
                         <button  onClick={() => navigate('/profile')} className="mt-14 py-2 px-8 border-t border-b border-gray-100 flex flex-row space-x-4">
                             <div>
                                 <img
-                                    src="https://img.freepik.com/premium-psd/3d-avatar-character_975163-673.jpg?semt=ais_hybrid&w=740&q=80"
+                                    src={user?.avatar_url}
                                     alt="avatar for profile"
                                     className="w-12"
                                 />

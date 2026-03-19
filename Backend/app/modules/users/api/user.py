@@ -1,6 +1,6 @@
 from typing import List, Optional, Literal, Annotated
 
-from fastapi import APIRouter, Depends, status as http_status, HTTPException, Query
+from fastapi import APIRouter, Depends, status as http_status, HTTPException, Query, UploadFile, File
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
@@ -113,6 +113,52 @@ async def update_password(
         )
 
     return user
+
+
+@router.post("/{user_id}/avatar", response_model=UserResponse)
+async def upload_user_avatar(
+    user_id: int,
+    service: ServiceDep,
+    file: UploadFile = File(...),
+) -> UserResponse:
+    if not file.content_type or not file.content_type.startswith("image/"):
+        raise HTTPException(
+            status_code=http_status.HTTP_400_BAD_REQUEST,
+            detail="Файл должен быть изображением (jpeg, png, webp и др.)",
+        )
+
+    file_bytes = await file.read()
+    if len(file_bytes) > 5 * 1024 * 1024:
+        raise HTTPException(
+            status_code=http_status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="Размер файла не должен превышать 5 МБ",
+        )
+
+    from app.core.cloudinary_client import upload_avatar
+    avatar_url = await upload_avatar(file_bytes, user_id)
+
+    user = await service.update_avatar(user_id, avatar_url)
+    if not user:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND, detail="Пользователь не найден"
+        )
+    return user
+
+
+@router.delete("/{user_id}/avatar", response_model=UserResponse)
+async def delete_user_avatar(user_id: int, service: ServiceDep) -> UserResponse:
+    user = await service.get_by_id(user_id)
+    if not user:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND, detail="Пользователь не найден"
+        )
+
+    if user.avatar_url:
+        from app.core.cloudinary_client import delete_avatar
+        await delete_avatar(user_id)
+
+    updated_user = await service.update_avatar(user_id, None)
+    return updated_user
 
 
 @router.delete("/{user_id}", status_code=http_status.HTTP_204_NO_CONTENT)

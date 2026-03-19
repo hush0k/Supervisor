@@ -71,6 +71,7 @@ class UserResponse(UserBase):
 
     id: int
     role: Role
+    avatar_url: Optional[str] = None
     position: Optional[PositionResponse] = None
     created_at: datetime
     updated_at: datetime

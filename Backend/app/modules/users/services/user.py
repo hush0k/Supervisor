@@ -179,6 +179,21 @@ class UserService:
         )
         return result.scalar_one()
 
+    async def update_avatar(self, user_id: int, avatar_url: str) -> Optional[User]:
+        user = await self.get_by_id(user_id)
+        if not user:
+            return None
+
+        user.avatar_url = avatar_url
+        await self.db.flush()
+
+        result = await self.db.execute(
+            select(User)
+            .options(selectinload(User.position))
+            .where(User.id == user_id)
+        )
+        return result.scalar_one()
+
     async def delete(self, user_id: int) -> bool:
         user = await self.get_by_id(user_id)
         if not user:
