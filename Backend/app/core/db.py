@@ -9,6 +9,9 @@ from sqlalchemy.ext.asyncio import (
 from sqlalchemy.orm import declarative_base
 
 from app.core.config import settings
+from app.core.logging import get_logger
+
+logger = get_logger("db")
 
 Base = declarative_base()
 
@@ -28,8 +31,9 @@ class DatabaseManager:
             try:
                 yield session
                 await session.commit()
-            except Exception:
+            except Exception as e:
                 await session.rollback()
+                logger.error("DB session rollback due to: %s", e)
                 raise
             finally:
                 pass

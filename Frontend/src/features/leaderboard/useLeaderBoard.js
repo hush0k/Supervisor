@@ -7,7 +7,7 @@ export function useLeaderBoard(filters = {}) {
 
     return useQuery({
         queryKey: ['leaderboard', companyId, filters],
-        queryFn: () => leaderboardApi.getLeaderboard(companyId, filters),
+        queryFn: () => leaderboardApi.getLeaderBoard(companyId, filters),
         enabled: !!companyId,
         staleTime: 1000 * 60 * 5
     })

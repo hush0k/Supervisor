@@ -5,9 +5,12 @@ from fastapi.security import HTTPAuthorizationCredentials
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
+from app.core.logging import get_logger
 from app.modules.base_module.enums import Role
 from app.modules.auth.service.auth import security, AuthService
 from app.modules.users.models.user import User
+
+logger = get_logger("access")
 
 
 async def get_current_user(
@@ -23,6 +26,12 @@ CurrentUser = Annotated[User, Depends(get_current_user)]
 def require_role(*allowed_roles: Role):
     async def role_checker(current_user: CurrentUser) -> User:
         if current_user.role not in allowed_roles:
+            logger.warning(
+                "Access denied: user_id=%s role=%s required=%s",
+                current_user.id,
+                current_user.role,
+                [r.value for r in allowed_roles],
+            )
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Недостаточно прав для выполнения операции")
         return current_user
 
