@@ -13,7 +13,7 @@ import {
 import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "@/shared/ui/dropdown-menu.jsx";
 import {useAuthStore} from "@/entities/user/model/store.js";
 import logoSvg from '@/assets/logos/supervisor.svg'
-import { Sheet, SheetContent, SheetTrigger } from "@/shared/ui/sheet"
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/shared/ui/sheet"
 import { GrLogout } from "react-icons/gr";
 import { MdDashboard } from "react-icons/md";
 import { MdLeaderboard } from "react-icons/md";
@@ -105,11 +105,13 @@ export function Header({ variant = "default" }) {
                             <button className="p-2"><Menu size={24} /></button>
                         </SheetTrigger>
                         <SheetContent side="left" className="w-[320px] p-0 flex flex-col">
+                            <SheetTitle className="sr-only">Навигационное меню</SheetTitle>
                             <button onClick={() => navigate('/profile')} className="mt-14 py-2 px-8 border-t border-b border-gray-100 flex flex-row space-x-4">
                                 <img
-                                    src="https://img.freepik.com/premium-psd/3d-avatar-character_975163-673.jpg?semt=ais_hybrid&w=740&q=80"
+                                    src={user?.avatar_url}
                                     alt="avatar"
                                     className="w-12"
+                                    onError={(e) => { e.target.style.display = 'none'; }}
                                 />
                                 <div className="flex flex-col justify-around text-left">
                                     <p className="font-bold">{user?.first_name[0]}. {user?.last_name}</p>
@@ -191,12 +193,14 @@ export function Header({ variant = "default" }) {
                         <button className="p-2"><Menu size={24} /></button>
                     </SheetTrigger>
                     <SheetContent side="left" className="w-[320px] p-0 flex flex-col ">
+                        <SheetTitle className="sr-only">Навигационное меню</SheetTitle>
                         <button  onClick={() => navigate('/profile')} className="mt-14 py-2 px-8 border-t border-b border-gray-100 flex flex-row space-x-4">
                             <div>
                                 <img
                                     src={user?.avatar_url}
                                     alt="avatar for profile"
                                     className="w-12"
+                                    onError={(e) => { e.target.style.display = 'none'; }}
                                 />
                             </div>
 
