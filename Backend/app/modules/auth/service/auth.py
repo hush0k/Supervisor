@@ -9,9 +9,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
+from app.core.logging import get_logger
 from app.core.security import verify_password
 from app.modules.auth.schemas.auth import TokenPayload
 from app.modules.users.models.user import User
+
+logger = get_logger("auth")
 
 
 security = HTTPBearer()
@@ -43,7 +46,6 @@ class AuthService:
         )
 
     def verify_token(self, token: str, token_type: str) -> Optional[TokenPayload]:
-        """Проверить токен и вернуть payload"""
         try:
             payload = jwt.decode(
                 token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM]
@@ -51,23 +53,27 @@ class AuthService:
             token_data = TokenPayload(**payload)
 
             if token_data.type != token_type:
+                logger.warning("Token type mismatch: expected=%s got=%s", token_type, token_data.type)
                 return None
 
             return token_data
-        except JWTError:
+        except JWTError as e:
+            logger.warning("Token verification failed: %s", e)
             return None
 
     async def authenticate_user(self, login: str, password: str) -> Optional[User]:
-        """Аутентификация юзера по логину и паролю"""
         result = await self.db.execute(select(User).where(User.login == login))
         user = result.scalar_one_or_none()
 
         if not user:
+            logger.warning("Login attempt with unknown login: %s", login)
             return None
 
         if not verify_password(password, user.hashed_password):
+            logger.warning("Invalid password for user id=%s login=%s", user.id, login)
             return None
 
+        logger.info("User authenticated: id=%s login=%s", user.id, login)
         return user
 
     async def get_current_user(self, credentials: HTTPAuthorizationCredentials) -> User:
@@ -75,6 +81,7 @@ class AuthService:
 
         token_data = self.verify_token(token, "access")
         if not token_data:
+            logger.warning("Unauthorized request: invalid or expired access token")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Невалидный токен или токен истёк",
@@ -89,6 +96,7 @@ class AuthService:
         user = result.scalar_one_or_none()
 
         if not user:
+            logger.warning("Token references non-existent user id=%s", token_data.sub)
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Пользователь не найден",

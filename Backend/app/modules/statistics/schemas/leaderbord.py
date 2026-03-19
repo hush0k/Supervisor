@@ -1,5 +1,5 @@
 from datetime import date
-from typing import Literal
+from typing import Literal, Optional
 
 from pydantic import BaseModel
 
@@ -9,6 +9,7 @@ class LeaderBoardEntity(BaseModel):
     user_first_name: str
     user_last_name: str
     rank_position: int
+    avatar_url: Optional[str] = None
     total_points: int
     success_rate: float
 

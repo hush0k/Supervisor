@@ -27,7 +27,8 @@ async def get_leaderboard(
         sort_order: Literal["asc", "desc"] = "desc",
         min_success_rate: float = 0.0,
         position_id: int | None = None,
+        limit: int | None = None,
 ) -> list[LeaderBoardEntity]:
     return await service.get_leaderboard(
-        company_id,  sort_field, sort_order, min_success_rate, position_id
+        company_id,  sort_field, sort_order, min_success_rate, position_id, limit
     )

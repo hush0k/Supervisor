@@ -6,6 +6,7 @@ import { BsBuildingFill } from "react-icons/bs"
 import { BiTask } from "react-icons/bi"
 import { useNavigate } from "react-router-dom"
 import { CustomCalendar } from "@/pages/dashboard/ui/CustomCalendar"
+import { LeaderBoard } from "@/pages/dashboard/ui/LeaderBoard"
 
 export function RightSideBar() {
     const navigate = useNavigate()
@@ -18,11 +19,13 @@ export function RightSideBar() {
     ]
 
     return (
-        <div className="hidden lg:block">
-            <Sidebar className="bg-white w-66" side="right">
+        <div className="hidden md:block">
+            <Sidebar className="bg-white w-80" side="right">
                 <SidebarContent>
                     <CustomCalendar />
-                    
+
+                    <p className="px-4 py-2 text-sm font-bold tracking-wider">ТОП 10 РАБОТНИКОВ</p>
+                    <LeaderBoard />
                 </SidebarContent>
             </Sidebar>
         </div>

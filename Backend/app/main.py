@@ -1,10 +1,15 @@
+import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from starlette.middleware.cors import CORSMiddleware
 
 from app.core.config import settings
 from app.core.db import init_db
+from app.core.logging import setup_logging, get_logger
+
+setup_logging()
+logger = get_logger("app")
 from app.modules.statistics.api.task_points_history import task_points_history_service
 from app.modules.statistics.models import user_statistic, company_statistic
 
@@ -28,8 +33,11 @@ from app.modules.statistics.api import difficulty_config, task_points_history, u
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    logger.info("Starting up %s v%s", settings.PROJECT_NAME, settings.VERSION)
     await init_db()
+    logger.info("Database initialized")
     yield
+    logger.info("Shutting down")
 
 
 def create_app() -> FastAPI:
@@ -57,6 +65,20 @@ def create_app() -> FastAPI:
     app.include_router(task_points_history.router, prefix="/api/v1")
     app.include_router(user_statistics.router, prefix="/api/v1")
     app.include_router(company_statistics.router, prefix="/api/v1")
+
+    @app.middleware("http")
+    async def log_requests(request: Request, call_next):
+        start = time.perf_counter()
+        response = await call_next(request)
+        duration_ms = (time.perf_counter() - start) * 1000
+        logger.info(
+            "%s %s -> %s (%.1fms)",
+            request.method,
+            request.url.path,
+            response.status_code,
+            duration_ms,
+        )
+        return response
 
     return app
 
