@@ -3,6 +3,7 @@ from typing import Optional
 from fastapi import HTTPException, status
 from sqlalchemy import select, or_, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
 from app.core.security import hash_password, verify_password
 from app.modules.base_module.enums import TaskStep
@@ -35,18 +36,27 @@ class UserService:
 
         self.db.add(user)
         await self.db.flush()
-        await self.db.refresh(user)
-        return user
+
+        result = await self.db.execute(
+            select(User)
+            .options(selectinload(User.position))
+            .where(User.id == user.id)
+        )
+        return result.scalar_one()
 
     async def get_by_id(self, user_id: int) -> Optional[User]:
-        result = await self.db.execute(select(User).where(User.id == user_id))
+        result = await self.db.execute(
+            select(User)
+            .options(selectinload(User.position))
+            .where(User.id == user_id)
+        )
         return result.scalar_one_or_none()
 
     async def get_all(
         self, filters: UserFilter, sort: UserSort, skip: int = 0, limit: int = 100
     ) -> list[User]:
 
-        query = select(User)
+        query = select(User).options(selectinload(User.position))
 
         if filters.role:
             query = query.where(User.role == filters.role)
@@ -72,11 +82,10 @@ class UserService:
 
         order_func = desc if sort.order == "desc" else asc
         query = query.order_by(order_func(getattr(User, sort.field)))
-
         query = query.offset(skip).limit(limit)
+
         result = await self.db.execute(query)
         return list(result.scalars().all())
-
 
     async def get_tasks_in_progress(self, user_id: int) -> Optional[list[TaskResponse]]:
         user = await self.get_by_id(user_id)
@@ -96,7 +105,6 @@ class UserService:
 
         return list(user_executing.scalars().all())
 
-
     async def get_tasks_available(self, user_id: int) -> Optional[list[TaskResponse]]:
         user = await self.get_by_id(user_id)
         if not user:
@@ -113,7 +121,6 @@ class UserService:
         )
 
         return list(user_accessible.scalars().all())
-
 
     async def get_tasks_completed(self, user_id: int) -> Optional[list[TaskResponse]]:
         user = await self.get_by_id(user_id)
@@ -133,26 +140,28 @@ class UserService:
 
         return list(user_completed.scalars().all())
 
-
-    async def update(self, user_id, user_in: UserUpdate) -> Optional[User]:
+    async def update(self, user_id: int, user_in: UserUpdate) -> Optional[User]:
         user = await self.get_by_id(user_id)
         if not user:
             return None
 
         update_data = user_in.model_dump(exclude_unset=True)
-
         for field, value in update_data.items():
             setattr(user, field, value)
 
         await self.db.flush()
-        await self.db.refresh(user)
-        return user
+
+        result = await self.db.execute(
+            select(User)
+            .options(selectinload(User.position))
+            .where(User.id == user_id)
+        )
+        return result.scalar_one()
 
     async def update_password(
         self, user_id: int, passwords: UserUpdatePassword
     ) -> Optional[User]:
         user = await self.get_by_id(user_id)
-
         if not user:
             return None
 
@@ -160,16 +169,18 @@ class UserService:
         if not verify_password(passwords.old_password, user.hashed_password):
             return None
 
-        hashed_password = hash_password(passwords.new_password)
-        user.hashed_password = hashed_password
-
+        user.hashed_password = hash_password(passwords.new_password)
         await self.db.flush()
-        await self.db.refresh(user)
-        return user
 
-    async def delete(self, user_id) -> bool:
+        result = await self.db.execute(
+            select(User)
+            .options(selectinload(User.position))
+            .where(User.id == user_id)
+        )
+        return result.scalar_one()
+
+    async def delete(self, user_id: int) -> bool:
         user = await self.get_by_id(user_id)
-
         if not user:
             return False
 
@@ -178,16 +189,15 @@ class UserService:
 
     async def get_my_employees(self, user_id: int) -> list[UserResponse] | None:
         user = await self.get_by_id(user_id)
-
         if not user:
             return None
 
         employees = await self.db.execute(
             select(User)
+            .options(selectinload(User.position))
             .where(
                 User.company_id == user.company_id,
                 User.id != user_id
             )
         )
-
         return list(employees.scalars().all())

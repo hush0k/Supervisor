@@ -5,6 +5,7 @@ import { MdDashboard, MdLeaderboard } from "react-icons/md"
 import { BsBuildingFill } from "react-icons/bs"
 import { BiTask } from "react-icons/bi"
 import { useNavigate } from "react-router-dom"
+import { CustomCalendar } from "@/pages/dashboard/ui/CustomCalendar"
 
 export function RightSideBar() {
     const navigate = useNavigate()
@@ -18,9 +19,10 @@ export function RightSideBar() {
 
     return (
         <div className="hidden lg:block">
-            <Sidebar className="bg-white w-80" side="right">
+            <Sidebar className="bg-white w-66" side="right">
                 <SidebarContent>
-
+                    <CustomCalendar />
+                    
                 </SidebarContent>
             </Sidebar>
         </div>

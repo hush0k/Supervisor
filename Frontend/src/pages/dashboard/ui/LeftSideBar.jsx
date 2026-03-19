@@ -10,9 +10,9 @@ export function LeftSideBar() {
     const navigate = useNavigate()
 
     const menuItems = [
-        { label: "Dashboard", path: "/dashboard", icon: <MdDashboard size={18} /> },
-        { label: "Tasks", path: "/tasks", icon: <BiTask size={18} /> },
-        { label: "Leaderboard", path: "/leaderboard", icon: <MdLeaderboard size={18} /> },
+        { label: "Главная", path: "/dashboard", icon: <MdDashboard size={18} /> },
+        { label: "Задании", path: "/tasks", icon: <BiTask size={18} /> },
+        { label: "Таблица лидеров", path: "/leaderboard", icon: <MdLeaderboard size={18} /> },
         { label: "Моя компания", path: "/company", icon: <BsBuildingFill size={18} /> },
     ]
 
