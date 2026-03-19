@@ -69,10 +69,12 @@ class User(Base, TimestampMixin):
 
     user_statistics: Mapped[list["UserStatistic"]] = relationship(
         "UserStatistic",
-        back_populates="user"
+        back_populates="user",
+        cascade="all, delete-orphan",
     )
 
     task_point_history: Mapped[list["TaskPointHistory"]] = relationship(
         "TaskPointHistory",
         back_populates="user",
+        cascade="all, delete-orphan",
     )

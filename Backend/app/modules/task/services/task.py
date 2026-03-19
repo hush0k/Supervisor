@@ -6,7 +6,10 @@ from datetime import date
 
 from sqlalchemy.orm import selectinload
 
+from app.core.logging import get_logger
 from app.modules.base_module.enums import TaskType, TaskStep, Role, QualityStatus
+
+logger = get_logger("tasks")
 from app.modules.statistics.services.points_calculation import PointsCalculationService
 from app.modules.task.model.task import Task
 from app.modules.task.schemas.task import (
@@ -37,6 +40,7 @@ class TaskService:
         await self.db.flush()
         await self.db.refresh(task)
 
+        logger.info("Task created: id=%s name='%s' company_id=%s", task.id, task.name, company_id)
         return task
 
     async def get_by_id(self, task_id: int) -> TaskResponse:
@@ -99,9 +103,11 @@ class TaskService:
         task = await self.get_by_id(task_id)
 
         if not task:
+            logger.warning("Delete task: not found id=%s", task_id)
             return False
 
         await self.db.delete(task)
+        logger.info("Task deleted: id=%s", task_id)
         return True
 
     async def take_task(
@@ -148,6 +154,7 @@ class TaskService:
 
         await self.db.flush()
         await self.db.refresh(task)
+        logger.info("Task taken: task_id=%s user_id=%s type=%s", task_id, user_id, task.task_type)
         return task
 
 
@@ -182,6 +189,7 @@ class TaskService:
 
         await self.db.flush()
         await self.db.refresh(task)
+        logger.info("Task completed: task_id=%s user_id=%s", task_id, user_id)
         return task
 
 
@@ -214,9 +222,9 @@ class TaskService:
         task.quality_status = QualityStatus.VERIFIED
         task.verified_at = date.today()
 
-
         await self.db.flush()
         await self.db.refresh(task)
+        logger.info("Task verified: task_id=%s", task_id)
         return True
 
     async def reject_task(self, task_id: int) -> Optional[bool]:
@@ -230,6 +238,7 @@ class TaskService:
 
         await self.db.flush()
         await self.db.refresh(task)
+        logger.info("Task rejected: task_id=%s", task_id)
         return False
 
 

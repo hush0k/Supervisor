@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Optional
 
 from fastapi import HTTPException, status
@@ -5,8 +6,12 @@ from sqlalchemy import select, or_, desc, asc
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.core.logging import get_logger
 from app.core.security import hash_password, verify_password
-from app.modules.base_module.enums import TaskStep
+
+logger = get_logger("users")
+from app.modules.base_module.enums import TaskStep, PeriodType
+from app.modules.statistics.models.user_statistic import UserStatistic
 from app.modules.task.model.task import Task
 from app.modules.task.schemas.task import TaskResponse
 from app.modules.task_operations.model.task_operation import TaskOperation, executors
@@ -32,9 +37,20 @@ class UserService:
 
         existing_user = await self.db.execute(select(User).where(User.login == user.login))
         if existing_user.scalar_one_or_none():
+            logger.warning("Create user failed: login already exists: %s", user_in.login)
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Пользователь уже существует.")
 
         self.db.add(user)
+        await self.db.flush()
+
+        today = date.today()
+        stat = UserStatistic(
+            user_id=user.id,
+            period_type=PeriodType.MONTH,
+            period_date=today,
+            total_points=0,
+        )
+        self.db.add(stat)
         await self.db.flush()
 
         result = await self.db.execute(
@@ -42,7 +58,9 @@ class UserService:
             .options(selectinload(User.position))
             .where(User.id == user.id)
         )
-        return result.scalar_one()
+        created = result.scalar_one()
+        logger.info("User created: id=%s login=%s", created.id, created.login)
+        return created
 
     async def get_by_id(self, user_id: int) -> Optional[User]:
         result = await self.db.execute(
@@ -143,6 +161,7 @@ class UserService:
     async def update(self, user_id: int, user_in: UserUpdate) -> Optional[User]:
         user = await self.get_by_id(user_id)
         if not user:
+            logger.warning("Update user: not found id=%s", user_id)
             return None
 
         update_data = user_in.model_dump(exclude_unset=True)
@@ -156,6 +175,7 @@ class UserService:
             .options(selectinload(User.position))
             .where(User.id == user_id)
         )
+        logger.info("User updated: id=%s fields=%s", user_id, list(update_data.keys()))
         return result.scalar_one()
 
     async def update_password(
@@ -163,10 +183,12 @@ class UserService:
     ) -> Optional[User]:
         user = await self.get_by_id(user_id)
         if not user:
+            logger.warning("Update password: user not found id=%s", user_id)
             return None
 
         # noinspection PyTypeChecker
         if not verify_password(passwords.old_password, user.hashed_password):
+            logger.warning("Update password: wrong old password for user id=%s", user_id)
             return None
 
         user.hashed_password = hash_password(passwords.new_password)
@@ -177,11 +199,13 @@ class UserService:
             .options(selectinload(User.position))
             .where(User.id == user_id)
         )
+        logger.info("Password updated for user id=%s", user_id)
         return result.scalar_one()
 
     async def update_avatar(self, user_id: int, avatar_url: str) -> Optional[User]:
         user = await self.get_by_id(user_id)
         if not user:
+            logger.warning("Update avatar: user not found id=%s", user_id)
             return None
 
         user.avatar_url = avatar_url
@@ -192,14 +216,17 @@ class UserService:
             .options(selectinload(User.position))
             .where(User.id == user_id)
         )
+        logger.info("Avatar updated for user id=%s", user_id)
         return result.scalar_one()
 
     async def delete(self, user_id: int) -> bool:
         user = await self.get_by_id(user_id)
         if not user:
+            logger.warning("Delete user: not found id=%s", user_id)
             return False
 
         await self.db.delete(user)
+        logger.info("User deleted: id=%s", user_id)
         return True
 
     async def get_my_employees(self, user_id: int) -> list[UserResponse] | None:

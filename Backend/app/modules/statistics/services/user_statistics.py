@@ -291,7 +291,7 @@ class UserStatisticsService:
         ranked_subq = (
             select(
                 UserStatistic.user_id,
-                func.rank().over(order_by=UserStatistic.total_points.desc()).label("rank"),
+                func.row_number().over(order_by=[UserStatistic.total_points.desc(), UserStatistic.percent_of_success.desc()]).label("rank"),
             )
             .where(
                 UserStatistic.period_type == PeriodType.MONTH,
@@ -376,10 +376,18 @@ class UserStatisticsService:
 
         order_expr = order_col.asc() if sort_order == "asc" else order_col.desc()
 
+        secondary_order = (
+            UserStatistic.percent_of_success.asc() if sort_order == "asc"
+            else UserStatistic.percent_of_success.desc()
+        ) if sort_field == "total_points" else (
+            UserStatistic.total_points.asc() if sort_order == "asc"
+            else UserStatistic.total_points.desc()
+        )
+
         ranked_subq = (
             select(
                 UserStatistic.user_id,
-                func.rank().over(order_by=order_expr).label("rank"),
+                func.row_number().over(order_by=[order_expr, secondary_order]).label("rank"),
             )
             .where(
                 UserStatistic.period_type == PeriodType.MONTH,
@@ -403,6 +411,7 @@ class UserStatisticsService:
                 User.id.label("user_id"),
                 User.first_name,
                 User.last_name,
+                User.avatar_url,
                 ranked_subq.c.rank.label("rank_position"),
                 UserStatistic.total_points,
                 UserStatistic.percent_of_success.label("success_rate"),
@@ -423,6 +432,7 @@ class UserStatisticsService:
                 user_id=row.user_id,
                 user_first_name=row.first_name,
                 user_last_name=row.last_name,
+                avatar_url=row.avatar_url,
                 rank_position=row.rank_position,
                 total_points=row.total_points,
                 success_rate=float(row.success_rate),
