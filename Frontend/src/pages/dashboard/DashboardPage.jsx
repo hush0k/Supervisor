@@ -11,7 +11,7 @@ export function DashboardPage() {
             </div>
             <div className="flex flex-1 mt-16 overflow-hidden">
                 <LeftSideBar />
-                <main className="flex-1 min-w-0 overflow-y-auto dot-bg">
+                <main className="flex flex-col flex-1 min-w-0 h-full items-center justify-center overflow-y-auto dot-bg">
                     <MainBlock />
                 </main>
                 <RightSideBar />

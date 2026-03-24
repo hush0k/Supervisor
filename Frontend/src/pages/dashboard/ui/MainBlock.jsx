@@ -1,10 +1,9 @@
-import { EmptyPage } from '@/pages/dashboard/ui/EmptyPage'
-import { Rocket } from "lucide-react"
+import { EmptyPageForAdmin } from '@/pages/dashboard/ui/EmptyPageForAdmin'
 
 export function MainBlock() {
     return (
-        <div>
-
+        <div className="flex flex-col w-full justify-center items-center">
+            <EmptyPageForAdmin />
         </div>
     )
 }
