@@ -1,33 +1,12 @@
-import {
-    Sidebar, SidebarContent, SidebarFooter,
-} from "@/shared/ui/sidebar"
-import { MdDashboard, MdLeaderboard } from "react-icons/md"
-import { BsBuildingFill } from "react-icons/bs"
-import { BiTask } from "react-icons/bi"
-import { useNavigate } from "react-router-dom"
 import { CustomCalendar } from "@/pages/dashboard/ui/CustomCalendar"
 import { LeaderBoard } from "@/pages/dashboard/ui/LeaderBoard"
 
 export function RightSideBar() {
-    const navigate = useNavigate()
-
-    const menuItems = [
-        { label: "Dashboard", path: "/dashboard", icon: <MdDashboard size={18} /> },
-        { label: "Tasks", path: "/tasks", icon: <BiTask size={18} /> },
-        { label: "Leaderboard", path: "/leaderboard", icon: <MdLeaderboard size={18} /> },
-        { label: "Моя компания", path: "/company", icon: <BsBuildingFill size={18} /> },
-    ]
-
     return (
-        <div className="hidden md:block">
-            <Sidebar className="bg-white w-80" side="right">
-                <SidebarContent>
-                    <CustomCalendar />
-
-                    <p className="px-4 py-2 text-sm font-bold tracking-wider">ТОП 10 РАБОТНИКОВ</p>
-                    <LeaderBoard />
-                </SidebarContent>
-            </Sidebar>
+        <div className="hidden md:flex flex-col w-80 bg-white border-l shrink-0 overflow-y-auto">
+            <CustomCalendar />
+            <p className="px-4 py-2 text-sm font-bold tracking-wider">ТОП 10 РАБОТНИКОВ</p>
+            <LeaderBoard />
         </div>
     )
 }

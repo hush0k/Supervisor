@@ -20,7 +20,7 @@ export function CustomCalendar() {
                 locale={ru}
                 className="p-0 w-full"
                 components={{
-                    Caption: () => (
+                    MonthCaption: () => (
                         <div className="flex justify-between items-center px-2 mb-2">
                             <button
                                 onClick={() => setMonth(m => new Date(m.getFullYear(), m.getMonth() - 1))}
@@ -29,8 +29,8 @@ export function CustomCalendar() {
                                 <ChevronLeft size={16} />
                             </button>
                             <span className="text-lg font-black uppercase tracking-wide">
-                                {format(month, "LLLL yyyy", { locale: ru })}
-                            </span>
+                              {format(month, "LLLL yyyy", { locale: ru })}
+                             </span>
                             <button
                                 onClick={() => setMonth(m => new Date(m.getFullYear(), m.getMonth() + 1))}
                                 className="h-8 w-8 flex items-center justify-center rounded hover:bg-accent transition-colors"
