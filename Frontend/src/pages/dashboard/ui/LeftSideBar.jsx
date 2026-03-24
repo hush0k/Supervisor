@@ -2,12 +2,16 @@ import { MdDashboard, MdLeaderboard } from "react-icons/md"
 import { BsBuildingFill } from "react-icons/bs"
 import { BiTask } from "react-icons/bi"
 import { useNavigate } from "react-router-dom"
+import { RiTeamFill } from "react-icons/ri"
+import { AiFillControl } from "react-icons/ai"
 
 export function LeftSideBar() {
     const navigate = useNavigate()
     const menuItems = [
         { label: "Главная", path: "/dashboard", icon: <MdDashboard size={18} /> },
-        { label: "Задании", path: "/tasks", icon: <BiTask size={18} /> },
+        { label: "Сотрудники", path: "/company", icon: <RiTeamFill size={18} /> },
+        { label: "Задачи", path: "/tasks", icon: <BiTask size={18} /> },
+        { label: "Проверка задач", path: "/tasks", icon: <AiFillControl size={18} /> },
         { label: "Таблица лидеров", path: "/leaderboard", icon: <MdLeaderboard size={18} /> },
         { label: "Моя компания", path: "/company", icon: <BsBuildingFill size={18} /> },
     ]
