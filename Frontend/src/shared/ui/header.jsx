@@ -19,6 +19,8 @@ import { MdDashboard } from "react-icons/md";
 import { MdLeaderboard } from "react-icons/md";
 import { BsBuildingFill } from "react-icons/bs";
 import { BiTask } from "react-icons/bi";
+import { RiTeamFill } from "react-icons/ri"
+import { AiFillControl } from "react-icons/ai"
 
 
 export function Header({ variant = "default" }) {
@@ -60,6 +62,15 @@ export function Header({ variant = "default" }) {
         {label: "Задачи", path: "/tasks", icon: <BiTask />},
         {label: "Моя компания", path: "/company", icon: <BsBuildingFill />},
     ];
+
+    const mobileMenuItems = [
+        { label: "Главная", path: "/dashboard", icon: <MdDashboard size={18} /> },
+        { label: "Сотрудники", path: "/company", icon: <RiTeamFill size={18} /> },
+        { label: "Задачи", path: "/tasks", icon: <BiTask size={18} /> },
+        { label: "Проверка задач", path: "/tasks", icon: <AiFillControl size={18} /> },
+        { label: "Таблица лидеров", path: "/leaderboard", icon: <MdLeaderboard size={18} /> },
+        { label: "Моя компания", path: "/company", icon: <BsBuildingFill size={18} /> },
+    ]
 
 
     if (variant === "logo-left") {
@@ -119,7 +130,7 @@ export function Header({ variant = "default" }) {
                                 </div>
                             </button>
                             <nav className="flex flex-col py-4 space-y-2">
-                                {menuItems.map((item) => (
+                                {mobileMenuItems.map((item) => (
                                     <button
                                         key={item.path}
                                         onClick={() => navigate(item.path)}

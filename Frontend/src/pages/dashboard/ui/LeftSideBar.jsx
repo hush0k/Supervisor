@@ -9,7 +9,7 @@ export function LeftSideBar() {
     const navigate = useNavigate()
     const menuItems = [
         { label: "Главная", path: "/dashboard", icon: <MdDashboard size={18} /> },
-        { label: "Сотрудники", path: "/company", icon: <RiTeamFill size={18} /> },
+        { label: "Сотрудники", path: "/team", icon: <RiTeamFill size={18} /> },
         { label: "Задачи", path: "/tasks", icon: <BiTask size={18} /> },
         { label: "Проверка задач", path: "/tasks", icon: <AiFillControl size={18} /> },
         { label: "Таблица лидеров", path: "/leaderboard", icon: <MdLeaderboard size={18} /> },
@@ -21,7 +21,7 @@ export function LeftSideBar() {
             <nav className="flex flex-col flex-1 py-4 space-y-2">
                 {menuItems.map((item) => (
                     <button
-                        key={item.path}
+                        key={item.label}
                         onClick={() => navigate(item.path)}
                         className="group/item text-left flex flex-row items-center hover:bg-accent rounded-md transition-colors"
                     >

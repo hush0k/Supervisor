@@ -1,4 +1,5 @@
 import { EmptyPageCard } from '@/pages/dashboard/ui/EmptyPageCard'
+import { EmptyPageCardMobi } from '@/pages/dashboard/ui/EmptyPageCardMobi'
 import { RiTeamFill } from "react-icons/ri";
 import { IoCreateSharp } from "react-icons/io5";
 import { AiFillControl } from "react-icons/ai";
@@ -36,8 +37,10 @@ export function EmptyPageForAdmin() {
     ];
 
     return (
-        info.map(item => <EmptyPageCard key={item.id} {...item} />)
-
+        <>
+            {info.map(item => <EmptyPageCard key={item.id} {...item} />)}
+            <EmptyPageCardMobi items={info} />
+        </>
     )
 
 }

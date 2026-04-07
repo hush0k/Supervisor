@@ -4,6 +4,7 @@ import LoginPage from '@/pages/login/LoginPage'
 import RegisterPage from '@/pages/register/RegisterPage.jsx'
 import {HomePage} from "@/pages/home/HomePage.jsx";
 import {DashboardPage} from "@/pages/dashboard/DashboardPage.jsx";
+import {TeamPage} from "@/pages/team/TeamPage.jsx";
 
 function ProtectedRoute({ children }) {
     const { isAuthenticated } = useAuthStore()
@@ -56,6 +57,15 @@ export function AppRouter() {
                     element={
                         <ProtectedRoute>
                             <DashboardPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/team"
+                    element={
+                        <ProtectedRoute>
+                            <TeamPage />
                         </ProtectedRoute>
                     }
                 />

@@ -368,64 +368,64 @@ class UserStatisticsService:
         today = date.today()
         first_day_of_month = today.replace(day=1)
 
-
-        order_col = (
-            UserStatistic.total_points if sort_field == "total_points"
-            else UserStatistic.percent_of_success
-        )
-
-        order_expr = order_col.asc() if sort_order == "asc" else order_col.desc()
-
-        secondary_order = (
-            UserStatistic.percent_of_success.asc() if sort_order == "asc"
-            else UserStatistic.percent_of_success.desc()
-        ) if sort_field == "total_points" else (
-            UserStatistic.total_points.asc() if sort_order == "asc"
-            else UserStatistic.total_points.desc()
-        )
-
-        ranked_subq = (
+        # Points aggregated directly from TaskPointHistory (always up-to-date)
+        points_subq = (
             select(
-                UserStatistic.user_id,
-                func.row_number().over(order_by=[order_expr, secondary_order]).label("rank"),
+                TaskPointHistory.user_id,
+                func.coalesce(func.sum(TaskPointHistory.points), 0).label("total_points"),
             )
-            .where(
-                UserStatistic.period_type == PeriodType.MONTH,
-                UserStatistic.period_date >= first_day_of_month,
-                UserStatistic.percent_of_success >= min_success_rate,
-                UserStatistic.user_id.in_(
-                    select(User.id).where(User.company_id == company_id)
-                )
-
-            )
+            .where(TaskPointHistory.period_date >= first_day_of_month)
+            .group_by(TaskPointHistory.user_id)
             .subquery()
         )
 
-        filters = [
-            User.company_id == company_id,
-            *([] if position_id is None else [User.position_id == position_id]),
-        ]
+        # Success rate from tasks completed this month
+        success_subq = (
+            select(
+                executors.c.user_id,
+                func.count(Task.id).filter(Task.task_step == TaskStep.VERIFIED).label("verified"),
+                func.count(Task.id).label("total_closed"),
+            )
+            .select_from(Task)
+            .join(TaskOperation, TaskOperation.task_id == Task.id)
+            .join(executors, executors.c.task_id == TaskOperation.id)  # type: ignore
+            .where(
+                Task.task_step.in_([TaskStep.VERIFIED, TaskStep.FAILED]),
+                Task.completed_at >= first_day_of_month,
+            )
+            .group_by(executors.c.user_id)
+            .subquery()
+        )
 
-        result = await self.db.execute(
+        success_rate_expr = func.coalesce(
+            success_subq.c.verified * 100.0 / func.nullif(success_subq.c.total_closed, 0),
+            0.0,
+        )
+
+        sort_col = points_subq.c.total_points if sort_field == "total_points" else success_rate_expr
+        order_expr = sort_col.asc() if sort_order == "asc" else sort_col.desc()
+
+        user_filters = [
+            User.company_id == company_id,
+        ]
+        if position_id is not None:
+            user_filters.append(User.position_id == position_id)
+
+        rows = (await self.db.execute(
             select(
                 User.id.label("user_id"),
                 User.first_name,
                 User.last_name,
                 User.avatar_url,
-                ranked_subq.c.rank.label("rank_position"),
-                UserStatistic.total_points,
-                UserStatistic.percent_of_success.label("success_rate"),
+                func.coalesce(points_subq.c.total_points, 0).label("total_points"),
+                success_rate_expr.label("success_rate"),
             )
-            .join(UserStatistic, UserStatistic.user_id == User.id)
-            .join(ranked_subq, ranked_subq.c.user_id == User.id) #type: ignore
-            .where(
-                *filters,
-                UserStatistic.period_type == PeriodType.MONTH,
-                UserStatistic.period_date >= first_day_of_month
-            )
+            .outerjoin(points_subq, points_subq.c.user_id == User.id)
+            .outerjoin(success_subq, success_subq.c.user_id == User.id)
+            .where(*user_filters)
             .order_by(order_expr)
             .limit(limit)
-        )
+        )).all()
 
         return [
             LeaderBoardEntity(
@@ -433,11 +433,12 @@ class UserStatisticsService:
                 user_first_name=row.first_name,
                 user_last_name=row.last_name,
                 avatar_url=row.avatar_url,
-                rank_position=row.rank_position,
+                rank_position=idx + 1,
                 total_points=row.total_points,
-                success_rate=float(row.success_rate),
+                success_rate=float(row.success_rate or 0.0),
             )
-            for row in result.all()
+            for idx, row in enumerate(rows)
+            if float(row.success_rate or 0.0) >= min_success_rate
         ]
 
 

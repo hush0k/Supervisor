@@ -26,7 +26,7 @@ export function AutoCarousel() {
                 className="w-4/5 mx-auto md:hidden"
             >
                 <CarouselContent className="-ml-2 md:-ml-4">
-                    {cards.map((card) => {
+                    {cards.map(card => {
                         const Icon = card.icon;
 
                         return (
