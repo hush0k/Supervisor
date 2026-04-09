@@ -11,7 +11,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.modules.base_module.base_class import TimestampMixin
 from app.core.db import Base
-from app.modules.base_module.enums import TaskType, City, TaskStep, QualityStatus
+from app.modules.base_module.enums import TaskType, City, TaskStep, QualityStatus, Priority
 
 if TYPE_CHECKING:
     from app.modules.task_operations.model.task_operation import TaskOperation
@@ -35,6 +35,16 @@ class Task(Base, TimestampMixin):
     completed_at: Mapped[Optional[Date]] = mapped_column(Date, nullable=True)
     verified_at: Mapped[Optional[Date]] = mapped_column(Date, nullable=True)
     quality_status: Mapped[QualityStatus] = mapped_column(Enum(QualityStatus), nullable=True)
+    priority: Mapped[Priority] = mapped_column(
+        Enum(
+            Priority,
+            native_enum=False,
+            values_callable=lambda enum_cls: [member.value for member in enum_cls],
+            validate_strings=True,
+        ),
+        nullable=False,
+        default=Priority.MEDIUM,
+    )
 
     operations: Mapped["TaskOperation"] = relationship("TaskOperation", back_populates="task", uselist=False)
     company: Mapped["Company"] = relationship("Company")

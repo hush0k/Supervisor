@@ -3,7 +3,7 @@ from typing import Annotated, Optional, List, Literal
 
 from pydantic import BaseModel, Field, field_validator, ConfigDict, model_validator
 
-from app.modules.base_module.enums import TaskType, City, TaskStep
+from app.modules.base_module.enums import TaskType, City, TaskStep, Priority
 
 
 class TaskBase(BaseModel):
@@ -14,7 +14,11 @@ class TaskBase(BaseModel):
     task_type: Annotated[TaskType, Field(default=TaskType.SOLO)]
     payment: Annotated[int, Field(ge=0, default=0)]
     city: City
+    priority: Annotated[Priority, Field(default=Priority.MEDIUM)]
 
+
+class TaskCreate(TaskBase):
+    duration: Optional[Annotated[int, Field(gt=0)]] = None
 
     @field_validator("deadline")
     @classmethod
@@ -22,10 +26,6 @@ class TaskBase(BaseModel):
         if v < date.today():
             raise ValueError("Дедлайн не может быть раньше сегодняшнего дня")
         return v
-
-
-class TaskCreate(TaskBase):
-    duration: Optional[Annotated[int, Field(gt=0)]] = None
 
     @model_validator(mode="after")
     def set_duration_from_deadline(self) -> "TaskCreate":
@@ -49,6 +49,14 @@ class TaskUpdate(BaseModel):
     duration: Optional[Annotated[int, Field(gt=0)]] = None
     city: Optional[City] = None
     task_step: Optional[TaskStep] = None
+    priority: Optional[Priority] = None
+
+    @field_validator("deadline")
+    @classmethod
+    def deadline_validator(cls, v: Optional[date]) -> Optional[date]:
+        if v is not None and v < date.today():
+            raise ValueError("Дедлайн не может быть раньше сегодняшнего дня")
+        return v
 
 
 class TaskResponse(TaskBase):
@@ -81,6 +89,7 @@ class TaskFilter(BaseModel):
     max_duration: Optional[int] = None
     city: Optional[City] = None
     task_step: Optional[TaskStep] = None
+    priority: Optional[Priority] = None
     search: Optional[str] = Field(None, min_length=1, max_length=100)
 
 

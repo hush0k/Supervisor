@@ -67,7 +67,7 @@ export function Header({ variant = "default" }) {
         { label: "Главная", path: "/dashboard", icon: <MdDashboard size={18} /> },
         { label: "Сотрудники", path: "/company", icon: <RiTeamFill size={18} /> },
         { label: "Задачи", path: "/tasks", icon: <BiTask size={18} /> },
-        { label: "Проверка задач", path: "/tasks", icon: <AiFillControl size={18} /> },
+        { label: "Проверка задач", path: "/task-check", icon: <AiFillControl size={18} /> },
         { label: "Таблица лидеров", path: "/leaderboard", icon: <MdLeaderboard size={18} /> },
         { label: "Моя компания", path: "/company", icon: <BsBuildingFill size={18} /> },
     ]

@@ -74,6 +74,8 @@ class TaskService:
             query = query.where(Task.city == filters.city)
         if filters.task_step:
             query = query.where(Task.task_step == filters.task_step)
+        if filters.priority:
+            query = query.where(Task.priority == filters.priority)
         if filters.search:
             search_pattern = f"%{filters.search}%"
             query = query.where(Task.name.ilike(search_pattern))

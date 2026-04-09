@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { usersApi } from '@/shared/api/users'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
@@ -26,14 +26,16 @@ import {
     SelectValue,
 } from '@/shared/ui/select'
 import { RiTeamFill } from 'react-icons/ri'
-import { FiSearch, FiEdit2, FiTrash2, FiUserPlus, FiFilter } from 'react-icons/fi'
+import { FiSearch, FiEdit2, FiTrash2, FiUserPlus, FiFilter, FiCamera, FiX } from 'react-icons/fi'
 import { MdOutlineTrendingUp } from 'react-icons/md'
 import { IoCashOutline } from 'react-icons/io5'
 import { BsPeopleFill } from 'react-icons/bs'
 
-const ROLE_LABELS = {
-    SUPERVISOR: { label: 'Супервайзер', className: 'bg-primary/10 text-primary font-semibold' },
-    USER:       { label: 'Сотрудник',   className: 'bg-gray-100 text-gray-600 font-medium' },
+const ROLE_CONFIG = {
+    user:       { label: 'Сотрудник',    className: 'bg-gray-100 text-gray-600 font-medium' },
+    head:       { label: 'Руководитель', className: 'bg-blue-100 text-blue-700 font-medium' },
+    supervisor: { label: 'Супервайзер',  className: 'bg-primary/10 text-primary font-semibold' },
+    admin:      { label: 'Админ',        className: 'bg-red-100 text-red-600 font-semibold' },
 }
 
 const EMPTY_FORM = {
@@ -43,6 +45,8 @@ const EMPTY_FORM = {
     date_of_birth: '',
     salary: '',
     bonus: '',
+    position_id: '',
+    role: 'user',
     password: '',
 }
 
@@ -79,28 +83,80 @@ function StatCard({ icon, label, value, sub }) {
     )
 }
 
+function AvatarPicker({ currentUrl, file, onChange, onRemove }) {
+    const inputRef = useRef(null)
+    const preview = file ? URL.createObjectURL(file) : currentUrl
+
+    return (
+        <div className="flex flex-col items-center gap-3 py-2">
+            <div className="relative w-20 h-20 group">
+                {preview ? (
+                    <img src={preview} alt="" className="w-20 h-20 rounded-full object-cover border-2 border-gray-200" />
+                ) : (
+                    <div className="w-20 h-20 rounded-full bg-gray-100 border-2 border-dashed border-gray-300 flex items-center justify-center text-gray-400">
+                        <FiCamera size={24} />
+                    </div>
+                )}
+                <button
+                    type="button"
+                    onClick={() => inputRef.current?.click()}
+                    className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                >
+                    <FiCamera size={18} className="text-white" />
+                </button>
+                {preview && (
+                    <button
+                        type="button"
+                        onClick={onRemove}
+                        className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white hover:bg-red-600"
+                    >
+                        <FiX size={11} />
+                    </button>
+                )}
+            </div>
+            <input
+                ref={inputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={e => onChange(e.target.files?.[0] ?? null)}
+            />
+            <button
+                type="button"
+                onClick={() => inputRef.current?.click()}
+                className="text-xs text-primary hover:underline"
+            >
+                {preview ? 'Сменить фото' : 'Загрузить фото'}
+            </button>
+        </div>
+    )
+}
+
 export function TeamContent() {
     const [employees, setEmployees] = useState([])
+    const [positions, setPositions] = useState([])
     const [loading, setLoading]     = useState(true)
     const [fetchError, setFetchError] = useState('')
 
-    // filters
-    const [search, setSearch]       = useState('')
+    const [search, setSearch]         = useState('')
     const [roleFilter, setRoleFilter] = useState('ALL')
-    const [sortBy, setSortBy]       = useState('name')
+    const [sortBy, setSortBy]         = useState('name')
 
-    // modal
     const [showModal, setShowModal]   = useState(false)
     const [editTarget, setEditTarget] = useState(null)
     const [form, setForm]             = useState(EMPTY_FORM)
+    const [avatarFile, setAvatarFile] = useState(null)
+    const [removeAvatar, setRemoveAvatar] = useState(false)
     const [formError, setFormError]   = useState('')
     const [submitting, setSubmitting] = useState(false)
 
-    // delete
     const [deleteTarget, setDeleteTarget] = useState(null)
     const [deleting, setDeleting]         = useState(false)
 
-    useEffect(() => { loadEmployees() }, [])
+    useEffect(() => {
+        loadEmployees()
+        usersApi.getPositions().then(setPositions).catch(() => setPositions([]))
+    }, [])
 
     async function loadEmployees() {
         setLoading(true)
@@ -123,11 +179,9 @@ export function TeamContent() {
             const matchRole   = roleFilter === 'ALL' || e.role === roleFilter
             return matchSearch && matchRole
         })
-
         if (sortBy === 'name')          list = [...list].sort((a, b) => a.last_name.localeCompare(b.last_name))
         else if (sortBy === 'salary_desc') list = [...list].sort((a, b) => b.salary - a.salary)
         else if (sortBy === 'salary_asc')  list = [...list].sort((a, b) => a.salary - b.salary)
-
         return list
     }, [employees, search, roleFilter, sortBy])
 
@@ -138,6 +192,8 @@ export function TeamContent() {
     function openAdd() {
         setEditTarget(null)
         setForm(EMPTY_FORM)
+        setAvatarFile(null)
+        setRemoveAvatar(false)
         setFormError('')
         setShowModal(true)
     }
@@ -151,23 +207,32 @@ export function TeamContent() {
             date_of_birth: emp.date_of_birth?.slice(0, 10) ?? '',
             salary:        String(emp.salary),
             bonus:         emp.bonus != null ? String(emp.bonus) : '',
+            position_id:   emp.position_id ? String(emp.position_id) : '',
+            role:          emp.role ?? 'user',
             password:      '',
         })
+        setAvatarFile(null)
+        setRemoveAvatar(false)
         setFormError('')
         setShowModal(true)
     }
 
-    function handleFormChange(e) {
-        setForm({ ...form, [e.target.name]: e.target.value })
+    function handleChange(e) {
+        setForm(f => ({ ...f, [e.target.name]: e.target.value }))
         setFormError('')
     }
 
-    function handleNumericChange(field) {
+    function handleNumeric(field) {
         return e => {
             const raw = e.target.value.replace(/\D/g, '')
             setForm(f => ({ ...f, [field]: raw }))
             setFormError('')
         }
+    }
+
+    function handleAvatarClear() {
+        setAvatarFile(null)
+        if (editTarget?.avatar_url) setRemoveAvatar(true)
     }
 
     async function handleSubmit(e) {
@@ -176,25 +241,46 @@ export function TeamContent() {
         setFormError('')
 
         const payload = {
-            login:         form.login.trim(),
-            first_name:    form.first_name.trim(),
-            last_name:     form.last_name.trim(),
+            login:       form.login.trim(),
+            first_name:  form.first_name.trim(),
+            last_name:   form.last_name.trim(),
             date_of_birth: form.date_of_birth,
-            salary:        Number(form.salary),
-            bonus:         form.bonus ? Number(form.bonus) : null,
-            position_id:   null,
-            company_id:    null,
+            salary:      Number(form.salary),
+            bonus:       form.bonus ? Number(form.bonus) : null,
+            position_id: form.position_id ? Number(form.position_id) : null,
+            company_id:  null,
         }
 
         try {
+            let savedUser
+
             if (editTarget) {
-                const { password, ...up } = payload
-                const updated = await usersApi.updateUser(editTarget.id, up)
-                setEmployees(prev => prev.map(e => e.id === updated.id ? updated : e))
+                const updatePayload = {
+                    login:       payload.login,
+                    first_name:  payload.first_name,
+                    last_name:   payload.last_name,
+                    date_of_birth: payload.date_of_birth,
+                    salary:      payload.salary,
+                    position_id: payload.position_id,
+                    role:        form.role,
+                }
+                savedUser = await usersApi.updateUser(editTarget.id, updatePayload)
             } else {
-                const created = await usersApi.createUser({ ...payload, password: form.password })
-                setEmployees(prev => [...prev, created])
+                savedUser = await usersApi.createUser({ ...payload, password: form.password })
             }
+
+            if (avatarFile) {
+                savedUser = await usersApi.uploadAvatar(savedUser.id, avatarFile)
+            } else if (removeAvatar && editTarget?.avatar_url) {
+                savedUser = await usersApi.deleteAvatar(savedUser.id)
+            }
+
+            if (editTarget) {
+                setEmployees(prev => prev.map(e => e.id === savedUser.id ? savedUser : e))
+            } else {
+                setEmployees(prev => [...prev, savedUser])
+            }
+
             setShowModal(false)
         } catch (err) {
             const detail = err.response?.data?.detail
@@ -220,7 +306,6 @@ export function TeamContent() {
     return (
         <div className="flex flex-col w-full min-h-full">
 
-            {/* ── Hero header ───────────────────────────────────────── */}
             <div className="bg-white border-b px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <div className="flex items-center justify-center w-12 h-12 bg-primary text-white shrink-0">
@@ -239,29 +324,12 @@ export function TeamContent() {
 
             <div className="flex flex-col gap-5 p-6">
 
-                {/* ── Stats ─────────────────────────────────────────── */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <StatCard
-                        icon={<BsPeopleFill size={20} />}
-                        label="Всего сотрудников"
-                        value={employees.length}
-                        sub="в вашей компании"
-                    />
-                    <StatCard
-                        icon={<IoCashOutline size={22} />}
-                        label="Средняя зарплата"
-                        value={formatSalary(avgSalary)}
-                        sub="по компании"
-                    />
-                    <StatCard
-                        icon={<MdOutlineTrendingUp size={22} />}
-                        label="Отображено"
-                        value={filtered.length}
-                        sub={`из ${employees.length} сотрудников`}
-                    />
+                    <StatCard icon={<BsPeopleFill size={20} />}    label="Всего сотрудников" value={employees.length} sub="в вашей компании" />
+                    <StatCard icon={<IoCashOutline size={22} />}   label="Средняя зарплата"  value={formatSalary(avgSalary)} sub="по компании" />
+                    <StatCard icon={<MdOutlineTrendingUp size={22} />} label="Отображено" value={filtered.length} sub={`из ${employees.length} сотрудников`} />
                 </div>
 
-                {/* ── Filters ───────────────────────────────────────── */}
                 <div className="bg-white border p-4 flex flex-col sm:flex-row gap-3 items-stretch sm:items-end">
                     <div className="flex flex-col gap-1 flex-1">
                         <Label className="text-xs text-gray-500 flex items-center gap-1">
@@ -283,13 +351,12 @@ export function TeamContent() {
                             <FiFilter size={11} /> Роль
                         </Label>
                         <Select value={roleFilter} onValueChange={setRoleFilter}>
-                            <SelectTrigger className="h-9 text-sm">
-                                <SelectValue />
-                            </SelectTrigger>
+                            <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="ALL">Все роли</SelectItem>
-                                <SelectItem value="USER">Сотрудник</SelectItem>
-                                <SelectItem value="SUPERVISOR">Супервайзер</SelectItem>
+                                {Object.entries(ROLE_CONFIG).map(([val, cfg]) => (
+                                    <SelectItem key={val} value={val}>{cfg.label}</SelectItem>
+                                ))}
                             </SelectContent>
                         </Select>
                     </div>
@@ -297,9 +364,7 @@ export function TeamContent() {
                     <div className="flex flex-col gap-1 w-full sm:w-52">
                         <Label className="text-xs text-gray-500">Сортировка</Label>
                         <Select value={sortBy} onValueChange={setSortBy}>
-                            <SelectTrigger className="h-9 text-sm">
-                                <SelectValue />
-                            </SelectTrigger>
+                            <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
                             <SelectContent>
                                 <SelectItem value="name">По имени (А–Я)</SelectItem>
                                 <SelectItem value="salary_desc">Зарплата: высокая</SelectItem>
@@ -309,7 +374,6 @@ export function TeamContent() {
                     </div>
                 </div>
 
-                {/* ── Table ─────────────────────────────────────────── */}
                 <div className="bg-white border overflow-auto">
                     {loading ? (
                         <div className="flex items-center justify-center h-52 text-gray-400 text-sm">Загрузка...</div>
@@ -343,26 +407,20 @@ export function TeamContent() {
                             </TableHeader>
                             <TableBody>
                                 {filtered.map((emp, idx) => {
-                                    const roleInfo = ROLE_LABELS[emp.role] ?? { label: emp.role, className: 'bg-gray-100 text-gray-600' }
+                                    const roleInfo = ROLE_CONFIG[emp.role] ?? { label: emp.role, className: 'bg-gray-100 text-gray-600' }
                                     return (
                                         <TableRow key={emp.id} className="hover:bg-accent/50 transition-colors group">
                                             <TableCell className="text-center text-gray-400 text-sm font-mono">{idx + 1}</TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
                                                     {emp.avatar_url ? (
-                                                        <img
-                                                            src={emp.avatar_url}
-                                                            alt=""
-                                                            className="w-8 h-8 rounded-none object-cover shrink-0"
-                                                        />
+                                                        <img src={emp.avatar_url} alt="" className="w-8 h-8 rounded-full object-cover shrink-0" />
                                                     ) : (
-                                                        <div className={`w-8 h-8 shrink-0 flex items-center justify-center text-white text-xs font-bold ${avatarColor(emp.id)}`}>
+                                                        <div className={`w-8 h-8 shrink-0 rounded-full flex items-center justify-center text-white text-xs font-bold ${avatarColor(emp.id)}`}>
                                                             {getInitials(emp.first_name, emp.last_name)}
                                                         </div>
                                                     )}
-                                                    <span className="font-semibold text-sm">
-                                                        {emp.last_name} {emp.first_name}
-                                                    </span>
+                                                    <span className="font-semibold text-sm">{emp.last_name} {emp.first_name}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell className="text-gray-500 text-sm">{emp.login}</TableCell>
@@ -380,20 +438,12 @@ export function TeamContent() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => openEdit(emp)}
-                                                        className="h-8 w-8 text-gray-500 hover:text-primary hover:bg-primary/10"
-                                                    >
+                                                    <Button variant="ghost" size="icon" onClick={() => openEdit(emp)}
+                                                        className="h-8 w-8 text-gray-500 hover:text-primary hover:bg-primary/10">
                                                         <FiEdit2 size={14} />
                                                     </Button>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="icon"
-                                                        onClick={() => setDeleteTarget(emp)}
-                                                        className="h-8 w-8 text-gray-500 hover:text-red-500 hover:bg-red-50"
-                                                    >
+                                                    <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(emp)}
+                                                        className="h-8 w-8 text-gray-500 hover:text-red-500 hover:bg-red-50">
                                                         <FiTrash2 size={14} />
                                                     </Button>
                                                 </div>
@@ -407,63 +457,102 @@ export function TeamContent() {
                 </div>
             </div>
 
-            {/* ── Add / Edit Modal ──────────────────────────────────── */}
             <Dialog open={showModal} onOpenChange={setShowModal}>
-                <DialogContent className="max-w-2xl">
-                    <DialogHeader>
+                <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
+                    <DialogHeader className="shrink-0">
                         <DialogTitle className="text-xl font-extrabold flex items-center gap-2">
                             <FiUserPlus className="text-primary" />
                             {editTarget ? 'Редактировать сотрудника' : 'Добавить сотрудника'}
                         </DialogTitle>
                     </DialogHeader>
 
-                    <form onSubmit={handleSubmit}>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
-                            <div className="space-y-1.5">
-                                <Label htmlFor="first_name">Имя</Label>
-                                <Input id="first_name" name="first_name" placeholder="Азамат"
-                                    value={form.first_name} onChange={handleFormChange} required />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="last_name">Фамилия</Label>
-                                <Input id="last_name" name="last_name" placeholder="Рахымжан"
-                                    value={form.last_name} onChange={handleFormChange} required />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="login">Логин</Label>
-                                <Input id="login" name="login" placeholder="username"
-                                    value={form.login} onChange={handleFormChange} required />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="date_of_birth">Дата рождения</Label>
-                                <Input id="date_of_birth" name="date_of_birth" type="date"
-                                    value={form.date_of_birth} onChange={handleFormChange} required />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="salary">Зарплата (₸)</Label>
-                                <Input id="salary" name="salary" type="text" placeholder="150 000"
-                                    value={form.salary ? Number(form.salary).toLocaleString('ru-RU') : ''}
-                                    onChange={handleNumericChange('salary')} required />
-                            </div>
-                            <div className="space-y-1.5">
-                                <Label htmlFor="bonus">Бонус (₸) — необязательно</Label>
-                                <Input id="bonus" name="bonus" type="text" placeholder="10 000"
-                                    value={form.bonus ? Number(form.bonus).toLocaleString('ru-RU') : ''}
-                                    onChange={handleNumericChange('bonus')} />
-                            </div>
-                            {!editTarget && (
-                                <div className="space-y-1.5 sm:col-span-2">
-                                    <Label htmlFor="password">Пароль</Label>
-                                    <Input id="password" name="password" type="password"
-                                        placeholder="Минимум 8 символов, A-z, 0-9, спецсимвол"
-                                        value={form.password} onChange={handleFormChange} required />
+                    <form onSubmit={handleSubmit} className="flex flex-col min-h-0 flex-1">
+                        <div className="overflow-y-auto flex-1 pr-1">
+                            <AvatarPicker
+                                currentUrl={!removeAvatar ? editTarget?.avatar_url : null}
+                                file={avatarFile}
+                                onChange={setAvatarFile}
+                                onRemove={handleAvatarClear}
+                            />
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-2">
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="first_name">Имя</Label>
+                                    <Input id="first_name" name="first_name" placeholder="Азамат"
+                                        value={form.first_name} onChange={handleChange} required />
                                 </div>
-                            )}
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="last_name">Фамилия</Label>
+                                    <Input id="last_name" name="last_name" placeholder="Рахымжан"
+                                        value={form.last_name} onChange={handleChange} required />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="login">Логин</Label>
+                                    <Input id="login" name="login" placeholder="username"
+                                        value={form.login} onChange={handleChange} required />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="date_of_birth">Дата рождения</Label>
+                                    <Input id="date_of_birth" name="date_of_birth" type="date"
+                                        value={form.date_of_birth} onChange={handleChange} required />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="salary">Зарплата (₸)</Label>
+                                    <Input id="salary" name="salary" type="text" placeholder="150 000"
+                                        value={form.salary ? Number(form.salary).toLocaleString('ru-RU') : ''}
+                                        onChange={handleNumeric('salary')} required />
+                                </div>
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="bonus">Бонус (₸) — необязательно</Label>
+                                    <Input id="bonus" name="bonus" type="text" placeholder="10 000"
+                                        value={form.bonus ? Number(form.bonus).toLocaleString('ru-RU') : ''}
+                                        onChange={handleNumeric('bonus')} />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                    <Label>Должность</Label>
+                                    <Select
+                                        value={form.position_id || '__none__'}
+                                        onValueChange={v => setForm(f => ({ ...f, position_id: v === '__none__' ? '' : v }))}
+                                    >
+                                        <SelectTrigger><SelectValue placeholder="Без должности" /></SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="__none__">Без должности</SelectItem>
+                                            {positions.map(p => (
+                                                <SelectItem key={p.id} value={String(p.id)}>{p.name}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {editTarget && (
+                                    <div className="space-y-1.5">
+                                        <Label>Роль</Label>
+                                        <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
+                                            <SelectTrigger><SelectValue /></SelectTrigger>
+                                            <SelectContent>
+                                                {Object.entries(ROLE_CONFIG).map(([val, cfg]) => (
+                                                    <SelectItem key={val} value={val}>{cfg.label}</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                )}
+
+                                {!editTarget && (
+                                    <div className="space-y-1.5 sm:col-span-2">
+                                        <Label htmlFor="password">Пароль</Label>
+                                        <Input id="password" name="password" type="password"
+                                            placeholder="Минимум 8 символов, A-z, 0-9, спецсимвол"
+                                            value={form.password} onChange={handleChange} required />
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
-                        {formError && <p className="text-sm text-red-500 mb-4">{formError}</p>}
+                        {formError && <p className="text-sm text-red-500 mt-2">{formError}</p>}
 
-                        <DialogFooter>
+                        <DialogFooter className="shrink-0 pt-3">
                             <Button type="button" variant="outline" onClick={() => setShowModal(false)}>Отмена</Button>
                             <Button type="submit" disabled={submitting}>
                                 {submitting ? 'Сохранение...' : editTarget ? 'Сохранить' : 'Добавить'}
@@ -473,7 +562,6 @@ export function TeamContent() {
                 </DialogContent>
             </Dialog>
 
-            {/* ── Delete Confirm ────────────────────────────────────── */}
             <Dialog open={!!deleteTarget} onOpenChange={open => !open && setDeleteTarget(null)}>
                 <DialogContent className="max-w-sm">
                     <DialogHeader>

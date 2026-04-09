@@ -5,6 +5,9 @@ import RegisterPage from '@/pages/register/RegisterPage.jsx'
 import {HomePage} from "@/pages/home/HomePage.jsx";
 import {DashboardPage} from "@/pages/dashboard/DashboardPage.jsx";
 import {TeamPage} from "@/pages/team/TeamPage.jsx";
+import {TasksPage} from "@/pages/tasks/TasksPage.jsx";
+import {TaskCheckPage} from "@/pages/task-check/TaskCheckPage.jsx"
+import {LeaderboardPage} from "@/pages/leaderboard/LeaderboardPage.jsx";
 
 function ProtectedRoute({ children }) {
     const { isAuthenticated } = useAuthStore()
@@ -66,6 +69,33 @@ export function AppRouter() {
                     element={
                         <ProtectedRoute>
                             <TeamPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/tasks"
+                    element={
+                        <ProtectedRoute>
+                            <TasksPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/task-check"
+                    element={
+                        <ProtectedRoute>
+                            <TaskCheckPage />
+                        </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/leaderboard"
+                    element={
+                        <ProtectedRoute>
+                            <LeaderboardPage />
                         </ProtectedRoute>
                     }
                 />
