@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from 'react'
 import { usersApi } from '@/shared/api/users'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
+import { PasswordInput } from '@/shared/ui/password-input'
 import { Label } from '@/shared/ui/label'
 import {
     Dialog,
@@ -542,7 +543,7 @@ export function TeamContent() {
                                 {!editTarget && (
                                     <div className="space-y-1.5 sm:col-span-2">
                                         <Label htmlFor="password">Пароль</Label>
-                                        <Input id="password" name="password" type="password"
+                                        <PasswordInput id="password" name="password"
                                             placeholder="Минимум 8 символов, A-z, 0-9, спецсимвол"
                                             value={form.password} onChange={handleChange} required />
                                     </div>
