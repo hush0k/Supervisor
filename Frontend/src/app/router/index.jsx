@@ -8,10 +8,17 @@ import {TeamPage} from "@/pages/team/TeamPage.jsx";
 import {TasksPage} from "@/pages/tasks/TasksPage.jsx";
 import {TaskCheckPage} from "@/pages/task-check/TaskCheckPage.jsx"
 import {LeaderboardPage} from "@/pages/leaderboard/LeaderboardPage.jsx";
+import {CompanyPage} from "@/pages/company/CompanyPage.jsx";
 
 function ProtectedRoute({ children }) {
     const { isAuthenticated } = useAuthStore()
     return isAuthenticated ? children : <Navigate to="/login" replace />
+}
+
+function RoleProtectedRoute({ children, allowedRoles }) {
+    const { isAuthenticated, user } = useAuthStore()
+    if (!isAuthenticated) return <Navigate to="/login" replace />
+    return allowedRoles.includes(user?.role) ? children : <Navigate to="/dashboard" replace />
 }
 
 function PublicRoute({ children }) {
@@ -67,27 +74,27 @@ export function AppRouter() {
                 <Route
                     path="/team"
                     element={
-                        <ProtectedRoute>
+                        <RoleProtectedRoute allowedRoles={['admin', 'supervisor']}>
                             <TeamPage />
-                        </ProtectedRoute>
+                        </RoleProtectedRoute>
                     }
                 />
 
                 <Route
                     path="/tasks"
                     element={
-                        <ProtectedRoute>
+                        <RoleProtectedRoute allowedRoles={['admin', 'supervisor']}>
                             <TasksPage />
-                        </ProtectedRoute>
+                        </RoleProtectedRoute>
                     }
                 />
 
                 <Route
                     path="/task-check"
                     element={
-                        <ProtectedRoute>
+                        <RoleProtectedRoute allowedRoles={['admin', 'supervisor']}>
                             <TaskCheckPage />
-                        </ProtectedRoute>
+                        </RoleProtectedRoute>
                     }
                 />
 
@@ -97,6 +104,15 @@ export function AppRouter() {
                         <ProtectedRoute>
                             <LeaderboardPage />
                         </ProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/company"
+                    element={
+                        <RoleProtectedRoute allowedRoles={['admin', 'supervisor']}>
+                            <CompanyPage />
+                        </RoleProtectedRoute>
                     }
                 />
 

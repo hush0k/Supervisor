@@ -27,6 +27,7 @@ export function Header({ variant = "default" }) {
     const navigate = useNavigate();
     const user = useAuthStore((state) => state.user);
     const {isAuthenticated} = useAuthStore();
+    const isManager = user?.role === 'admin' || user?.role === 'supervisor'
     const [sheetOpen, setSheetOpen] = useState(false);
 
     useEffect(() => {
@@ -56,21 +57,32 @@ export function Header({ variant = "default" }) {
         navigate(path);
     };
 
-    const menuItems = [
+    const managerItems = [
         {label: "Главная", path: "/dashboard", icon: <MdDashboard />},
-        {label: "Рейтинг", path: "/rating", icon: <MdLeaderboard />},
+        {label: "Таблица лидеров", path: "/leaderboard", icon: <MdLeaderboard />},
+        {label: "Сотрудники", path: "/team", icon: <RiTeamFill />},
         {label: "Задачи", path: "/tasks", icon: <BiTask />},
         {label: "Моя компания", path: "/company", icon: <BsBuildingFill />},
     ];
+    const userItems = [
+        {label: "Главная", path: "/dashboard", icon: <MdDashboard />},
+        {label: "Таблица лидеров", path: "/leaderboard", icon: <MdLeaderboard />},
+    ];
+    const menuItems = isManager ? managerItems : userItems
 
-    const mobileMenuItems = [
+    const managerMobileMenuItems = [
         { label: "Главная", path: "/dashboard", icon: <MdDashboard size={18} /> },
-        { label: "Сотрудники", path: "/company", icon: <RiTeamFill size={18} /> },
+        { label: "Сотрудники", path: "/team", icon: <RiTeamFill size={18} /> },
         { label: "Задачи", path: "/tasks", icon: <BiTask size={18} /> },
         { label: "Проверка задач", path: "/task-check", icon: <AiFillControl size={18} /> },
         { label: "Таблица лидеров", path: "/leaderboard", icon: <MdLeaderboard size={18} /> },
         { label: "Моя компания", path: "/company", icon: <BsBuildingFill size={18} /> },
     ]
+    const userMobileMenuItems = [
+        { label: "Главная", path: "/dashboard", icon: <MdDashboard size={18} /> },
+        { label: "Таблица лидеров", path: "/leaderboard", icon: <MdLeaderboard size={18} /> },
+    ]
+    const mobileMenuItems = isManager ? managerMobileMenuItems : userMobileMenuItems
 
 
     if (variant === "logo-left") {

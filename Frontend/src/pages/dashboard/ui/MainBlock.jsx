@@ -1,6 +1,8 @@
 import { useUserDashboard } from '@/features/statistics/useUserDashboard'
+import { useAuthStore } from '@/entities/user/model/store'
 import { EmptyPageForAdmin } from '@/pages/dashboard/ui/EmptyPageForAdmin'
 import { DashboardContent } from '@/pages/dashboard/ui/DashboardContent'
+import { CompanyContent } from '@/pages/company/ui/CompanyContent'
 
 function hasActivity(data) {
     if (!data) return false
@@ -13,7 +15,13 @@ function hasActivity(data) {
 }
 
 export function MainBlock() {
-    const { data, isLoading } = useUserDashboard(30)
+    const role = useAuthStore(s => s.user?.role)
+    const isManager = role === 'admin' || role === 'supervisor'
+    const { data, isLoading } = useUserDashboard(30, !isManager)
+
+    if (isManager) {
+        return <CompanyContent fallbackToUserDashboard={false} />
+    }
 
     if (isLoading) {
         return (

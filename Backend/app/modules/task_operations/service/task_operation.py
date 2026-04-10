@@ -1,8 +1,10 @@
 from typing import Optional
 
+from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.task.model.task import Task
 from app.modules.task_operations.model.task_operation import TaskOperation
 from app.modules.task_operations.schema.task_operation import TaskOperationCreate, TaskOperationBase, \
     TaskOperationUpdate, TaskOperationResponse
@@ -14,18 +16,46 @@ class TaskOperationService:
         self.db = db
 
     async def create(self, task_id: int, task_in: TaskOperationCreate) -> TaskOperationResponse:
+        task = await self.db.scalar(select(Task).where(Task.id == task_id))
+        if not task:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Задание не найдено",
+            )
+
         task_operation = TaskOperation(task_id=task_id)
 
         if task_in.accessed_users_ids:
+            unique_ids = list(set(task_in.accessed_users_ids))
             result = await self.db.execute(
-                select(User).where(User.id.in_(task_in.accessed_users_ids))
+                select(User).where(
+                    User.id.in_(unique_ids),
+                    User.company_id == task.company_id,
+                )
             )
-            task_operation.accessed_users = list(result.scalars().all())
+            accessed_users_list = list(result.scalars().all())
+            if len(accessed_users_list) != len(unique_ids):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Список допущенных сотрудников содержит некорректные id",
+                )
+            task_operation.accessed_users = accessed_users_list
+
         if task_in.executors_ids:
+            unique_ids = list(set(task_in.executors_ids))
             result = await self.db.execute(
-                select(User).where(User.id.in_(task_in.executors_ids))
+                select(User).where(
+                    User.id.in_(unique_ids),
+                    User.company_id == task.company_id,
+                )
             )
-            task_operation.executors = list(result.scalars().all())
+            executors_list = list(result.scalars().all())
+            if len(executors_list) != len(unique_ids):
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="Список исполнителей содержит некорректные id",
+                )
+            task_operation.executors = executors_list
 
         self.db.add(task_operation)
         await self.db.flush()
@@ -58,5 +88,4 @@ class TaskOperationService:
         await self.db.delete(task_operation)
         await self.db.flush()
         return True
-
 

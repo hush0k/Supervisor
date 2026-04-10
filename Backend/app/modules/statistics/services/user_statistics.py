@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.modules.base_module.enums import TaskStep, PeriodType, Role, TaskType
+from app.modules.company.model.company import Company
 from app.modules.statistics.models.task_point_history import TaskPointHistory
 from app.modules.statistics.models.user_statistic import UserStatistic
 from app.modules.statistics.schemas.chart import ChartPoint
@@ -297,7 +298,10 @@ class UserStatisticsService:
                 UserStatistic.period_type == PeriodType.MONTH,
                 UserStatistic.period_date >= first_day_of_month,
                 UserStatistic.user_id.in_(
-                    select(User.id).where(User.company_id == user.company_id)
+                    select(User.id).where(
+                        User.company_id == user.company_id,
+                        User.id != select(Company.owner_id).where(Company.id == user.company_id).scalar_subquery(),
+                    )
                 ),
                 )
             .subquery()
@@ -407,6 +411,7 @@ class UserStatisticsService:
 
         user_filters = [
             User.company_id == company_id,
+            User.id != select(Company.owner_id).where(Company.id == company_id).scalar_subquery(),
         ]
         if position_id is not None:
             user_filters.append(User.position_id == position_id)
@@ -440,7 +445,6 @@ class UserStatisticsService:
             for idx, row in enumerate(rows)
             if float(row.success_rate or 0.0) >= min_success_rate
         ]
-
 
 
 

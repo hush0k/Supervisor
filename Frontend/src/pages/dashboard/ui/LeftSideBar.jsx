@@ -4,12 +4,15 @@ import { BiTask } from "react-icons/bi"
 import { useNavigate, useLocation } from "react-router-dom"
 import { RiTeamFill } from "react-icons/ri"
 import { AiFillControl } from "react-icons/ai"
+import { useAuthStore } from "@/entities/user/model/store"
 
 export function LeftSideBar() {
     const navigate = useNavigate()
     const { pathname } = useLocation()
+    const role = useAuthStore(s => s.user?.role)
+    const isManager = role === 'admin' || role === 'supervisor'
 
-    const menuItems = [
+    const managerItems = [
         { label: "Главная",          path: "/dashboard",  icon: <MdDashboard size={18} /> },
         { label: "Сотрудники",       path: "/team",       icon: <RiTeamFill size={18} /> },
         { label: "Задачи",           path: "/tasks",      icon: <BiTask size={18} /> },
@@ -17,6 +20,11 @@ export function LeftSideBar() {
         { label: "Таблица лидеров",  path: "/leaderboard",icon: <MdLeaderboard size={18} /> },
         { label: "Моя компания",     path: "/company",    icon: <BsBuildingFill size={18} /> },
     ]
+    const userItems = [
+        { label: "Главная",          path: "/dashboard",  icon: <MdDashboard size={18} /> },
+        { label: "Таблица лидеров",  path: "/leaderboard",icon: <MdLeaderboard size={18} /> },
+    ]
+    const menuItems = isManager ? managerItems : userItems
 
     return (
         <div className="hidden lg:flex flex-col w-64 bg-white border-r shrink-0">

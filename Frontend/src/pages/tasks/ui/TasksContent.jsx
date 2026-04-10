@@ -258,8 +258,12 @@ export function TasksContent() {
                 const updated = await tasksApi.update(editTarget.id, payload)
                 setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
             } else {
+                if (form.accessed_user_ids.length === 0) {
+                    setFormError('Выберите хотя бы одного сотрудника, которому будет доступна задача')
+                    return
+                }
                 const taskOperation = {
-                    accessed_users_ids: form.task_type === 'group' ? form.accessed_user_ids : [],
+                    accessed_users_ids: form.accessed_user_ids,
                     executors_ids: [],
                 }
                 const created = await tasksApi.create(payload, taskOperation)
@@ -574,7 +578,7 @@ export function TasksContent() {
                                 </Select>
                             </div>
 
-                            {form.task_type === 'group' && (
+                            {!editTarget && (
                                 <div className="space-y-1.5 sm:col-span-2">
                                     <Label className="flex items-center gap-1">
                                         Допущенные сотрудники
@@ -584,6 +588,9 @@ export function TasksContent() {
                                             </span>
                                         )}
                                     </Label>
+                                    <p className="text-xs text-gray-500">
+                                        Выбранные сотрудники увидят задачу в доступных.
+                                    </p>
 
                                     {employees.length === 0 ? (
                                         <p className="text-sm text-gray-400 py-2">Нет сотрудников в компании</p>

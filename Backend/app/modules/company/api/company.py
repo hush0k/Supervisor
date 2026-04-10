@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Query, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_db
-from app.modules.base_module.dependencies import require_role
+from app.modules.base_module.dependencies import require_role, get_current_user
 from app.modules.base_module.enums import Role
 from app.modules.company.schemas.company import (
     CompanyCreate,
@@ -12,6 +12,7 @@ from app.modules.company.schemas.company import (
     CompanySort,
     CompanyFilter,
     CompanyUpdate,
+    CompanyOverviewResponse,
 )
 from app.modules.company.service.company import CompanyService
 from app.modules.users.models.user import User
@@ -53,6 +54,19 @@ async def get_all_companies(
     sort = CompanySort(field=sort_field, order=sort_order)
 
     return await service.get_all(filters=filters, sort=sort, skip=skip, limit=limit)
+
+
+@router.get("/my-company/overview", response_model=CompanyOverviewResponse)
+async def get_my_company_overview(
+    service: ServiceDep,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> CompanyOverviewResponse:
+    company_overview = await service.get_my_company_overview(current_user.id)
+    if not company_overview:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Компания пользователя не найдена"
+        )
+    return company_overview
 
 
 @router.get("/{company_id}", response_model=CompanyResponse)

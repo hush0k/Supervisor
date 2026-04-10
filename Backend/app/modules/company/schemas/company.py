@@ -3,6 +3,7 @@ from typing import Annotated, Optional, List, Literal
 
 from pydantic import Field, BaseModel, ConfigDict
 
+from app.modules.base_module.enums import Role
 
 class CompanyBase(BaseModel):
     owner_id: int
@@ -44,3 +45,38 @@ class CompanyFilter(BaseModel):
 class CompanySort(BaseModel):
     field: Literal["id", "name", "date_established"] = "name"
     order: Literal["asc", "desc"] = "asc"
+
+
+class CompanyRoleStat(BaseModel):
+    role: Role
+    count: int
+
+
+class CompanyPositionStat(BaseModel):
+    position_name: str
+    count: int
+
+
+class CompanyMonthlyTaskStat(BaseModel):
+    month: str
+    verified: int
+    failed: int
+    completed: int
+
+
+class CompanyOverviewResponse(BaseModel):
+    company: CompanyResponse
+    employees_count: int
+    avg_salary: float
+    total_salary: int
+    total_bonus: int
+    tasks_total: int
+    tasks_available: int
+    tasks_in_progress: int
+    tasks_completed: int
+    tasks_verified: int
+    tasks_failed: int
+    success_rate: float
+    role_distribution: list[CompanyRoleStat]
+    position_distribution: list[CompanyPositionStat]
+    monthly_task_stats: list[CompanyMonthlyTaskStat]

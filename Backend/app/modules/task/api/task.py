@@ -43,6 +43,11 @@ async def create_task(
     operation_service:  ServiceOperationDep,
     current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
 ) -> TaskResponse:
+    if not task_operation_in.accessed_users_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Нужно указать хотя бы одного допущенного сотрудника",
+        )
     task = await service.create(task_in, current_user.company_id)    # type: ignore
     await operation_service.create(task.id, task_operation_in)
     return task
