@@ -1,5 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { usersApi } from '@/shared/api/users'
+import { useAuthStore } from '@/entities/user/model/store'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
 import { PasswordInput } from '@/shared/ui/password-input'
@@ -134,6 +136,8 @@ function AvatarPicker({ currentUrl, file, onChange, onRemove }) {
 }
 
 export function TeamContent() {
+    const navigate = useNavigate()
+    const currentUser = useAuthStore(s => s.user)
     const [employees, setEmployees] = useState([])
     const [positions, setPositions] = useState([])
     const [loading, setLoading]     = useState(true)
@@ -142,6 +146,8 @@ export function TeamContent() {
     const [search, setSearch]         = useState('')
     const [roleFilter, setRoleFilter] = useState('ALL')
     const [sortBy, setSortBy]         = useState('name')
+    const [currentPage, setCurrentPage] = useState(1)
+    const PAGE_SIZE = 7
 
     const [showModal, setShowModal]   = useState(false)
     const [editTarget, setEditTarget] = useState(null)
@@ -186,9 +192,27 @@ export function TeamContent() {
         return list
     }, [employees, search, roleFilter, sortBy])
 
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [search, roleFilter, sortBy, employees.length])
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+    const safePage = Math.min(currentPage, totalPages)
+    const pagedEmployees = useMemo(() => {
+        const start = (safePage - 1) * PAGE_SIZE
+        return filtered.slice(start, start + PAGE_SIZE)
+    }, [filtered, safePage, PAGE_SIZE])
+
     const avgSalary = employees.length
         ? Math.round(employees.reduce((s, e) => s + e.salary, 0) / employees.length)
         : 0
+    const editableRoleOptions = useMemo(() => {
+        if (currentUser?.role === 'admin') return Object.entries(ROLE_CONFIG)
+        if (currentUser?.role === 'supervisor') {
+            return Object.entries(ROLE_CONFIG).filter(([val]) => val === 'user' || val === 'supervisor')
+        }
+        return Object.entries(ROLE_CONFIG).filter(([val]) => val === 'user')
+    }, [currentUser?.role])
 
     function openAdd() {
         setEditTarget(null)
@@ -252,7 +276,7 @@ export function TeamContent() {
         }
 
         try {
-            let savedUser
+            let savedUserId
 
             if (editTarget) {
                 const updatePayload = {
@@ -264,15 +288,17 @@ export function TeamContent() {
                     position_id: payload.position_id,
                     role:        form.role,
                 }
-                savedUser = await usersApi.updateUser(editTarget.id, updatePayload)
+                const updated = await usersApi.updateUser(editTarget.id, updatePayload)
+                savedUserId = updated.id
             } else {
-                savedUser = await usersApi.createUser({ ...payload, password: form.password })
+                const created = await usersApi.createUser({ ...payload, password: form.password })
+                savedUserId = created.id
             }
 
             if (avatarFile) {
-                savedUser = await usersApi.uploadAvatar(savedUser.id, avatarFile)
+                await usersApi.uploadAvatar(savedUserId, avatarFile)
             } else if (removeAvatar && editTarget?.avatar_url) {
-                savedUser = await usersApi.deleteAvatar(savedUser.id)
+                await usersApi.deleteAvatar(savedUserId)
             }
 
             await loadEmployees()
@@ -402,11 +428,17 @@ export function TeamContent() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filtered.map((emp, idx) => {
+                                {pagedEmployees.map((emp, idx) => {
                                     const roleInfo = ROLE_CONFIG[emp.role] ?? { label: emp.role, className: 'bg-gray-100 text-gray-600' }
                                     return (
-                                        <TableRow key={emp.id} className="hover:bg-accent/50 transition-colors group">
-                                            <TableCell className="text-center text-gray-400 text-sm font-mono">{idx + 1}</TableCell>
+                                        <TableRow
+                                            key={emp.id}
+                                            className="hover:bg-accent/50 transition-colors group cursor-pointer"
+                                            onClick={() => navigate(`/profile/${emp.id}`)}
+                                        >
+                                            <TableCell className="text-center text-gray-400 text-sm font-mono">
+                                                {(safePage - 1) * PAGE_SIZE + idx + 1}
+                                            </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center gap-3">
                                                     {emp.avatar_url ? (
@@ -434,11 +466,17 @@ export function TeamContent() {
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                                    <Button variant="ghost" size="icon" onClick={() => openEdit(emp)}
+                                                    <Button variant="ghost" size="icon" onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        openEdit(emp)
+                                                    }}
                                                         className="h-8 w-8 text-gray-500 hover:text-primary hover:bg-primary/10">
                                                         <FiEdit2 size={14} />
                                                     </Button>
-                                                    <Button variant="ghost" size="icon" onClick={() => setDeleteTarget(emp)}
+                                                    <Button variant="ghost" size="icon" onClick={(e) => {
+                                                        e.stopPropagation()
+                                                        setDeleteTarget(emp)
+                                                    }}
                                                         className="h-8 w-8 text-gray-500 hover:text-red-500 hover:bg-red-50">
                                                         <FiTrash2 size={14} />
                                                     </Button>
@@ -451,6 +489,35 @@ export function TeamContent() {
                         </Table>
                     )}
                 </div>
+
+                {filtered.length > 0 && (
+                    <div className="bg-white border px-4 py-3 flex items-center justify-between">
+                        <p className="text-xs text-gray-500">
+                            Показано {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} из {filtered.length}
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={safePage <= 1}
+                            >
+                                Назад
+                            </Button>
+                            <span className="text-xs text-gray-500 min-w-20 text-center">
+                                {safePage} / {totalPages}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={safePage >= totalPages}
+                            >
+                                Вперед
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             <Dialog open={showModal} onOpenChange={setShowModal}>
@@ -527,7 +594,7 @@ export function TeamContent() {
                                         <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
                                             <SelectTrigger><SelectValue /></SelectTrigger>
                                             <SelectContent>
-                                                {Object.entries(ROLE_CONFIG).map(([val, cfg]) => (
+                                                {editableRoleOptions.map(([val, cfg]) => (
                                                     <SelectItem key={val} value={val}>{cfg.label}</SelectItem>
                                                 ))}
                                             </SelectContent>

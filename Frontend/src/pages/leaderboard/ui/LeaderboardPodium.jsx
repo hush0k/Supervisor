@@ -1,4 +1,5 @@
 import { LeaderboardAvatar } from './LeaderboardAvatar'
+import { useNavigate } from 'react-router-dom'
 
 const VISUAL_SLOTS = [
     {
@@ -28,8 +29,13 @@ const VISUAL_SLOTS = [
 ]
 
 function PodiumSlot({ entry, config }) {
+    const navigate = useNavigate()
     return (
-        <div className="flex flex-col items-center gap-2">
+        <button
+            type="button"
+            onClick={() => navigate(`/profile/${entry.user_id}`)}
+            className="flex flex-col items-center gap-2"
+        >
             <span className="text-2xl">{config.medal}</span>
 
             <div className={`${config.ring} rounded-full`}>
@@ -51,7 +57,7 @@ function PodiumSlot({ entry, config }) {
             <div className={`w-24 ${config.height} bg-gray-100 border-t-2 border-gray-200 flex items-center justify-center`}>
                 <span className="text-3xl font-extrabold text-gray-300">#{entry.rank_position}</span>
             </div>
-        </div>
+        </button>
     )
 }
 

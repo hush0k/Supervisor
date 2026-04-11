@@ -4,6 +4,7 @@ import { BiTask } from "react-icons/bi"
 import { useNavigate, useLocation } from "react-router-dom"
 import { RiTeamFill } from "react-icons/ri"
 import { AiFillControl } from "react-icons/ai"
+import { FiUser, FiActivity } from "react-icons/fi"
 import { useAuthStore } from "@/entities/user/model/store"
 
 export function LeftSideBar() {
@@ -14,14 +15,18 @@ export function LeftSideBar() {
 
     const managerItems = [
         { label: "Главная",          path: "/dashboard",  icon: <MdDashboard size={18} /> },
+        { label: "Мой профиль",      path: "/profile",    icon: <FiUser size={18} /> },
         { label: "Сотрудники",       path: "/team",       icon: <RiTeamFill size={18} /> },
         { label: "Задачи",           path: "/tasks",      icon: <BiTask size={18} /> },
+        { label: "Архив задач",      path: "/tasks-archive", icon: <BiTask size={18} /> },
         { label: "Проверка задач",   path: "/task-check", icon: <AiFillControl size={18} /> },
+        { label: "История очков",    path: "/task-points-history", icon: <FiActivity size={18} /> },
         { label: "Таблица лидеров",  path: "/leaderboard",icon: <MdLeaderboard size={18} /> },
         { label: "Моя компания",     path: "/company",    icon: <BsBuildingFill size={18} /> },
     ]
     const userItems = [
         { label: "Главная",          path: "/dashboard",  icon: <MdDashboard size={18} /> },
+        { label: "Мой профиль",      path: "/profile",    icon: <FiUser size={18} /> },
         { label: "Мои задачи",       path: "/my-tasks",   icon: <BiTask size={18} /> },
         { label: "Активные задачи",  path: "/active-tasks", icon: <AiFillControl size={18} /> },
         { label: "Таблица лидеров",  path: "/leaderboard",icon: <MdLeaderboard size={18} /> },
@@ -32,7 +37,11 @@ export function LeftSideBar() {
         <div className="hidden lg:flex flex-col w-64 bg-white border-r shrink-0">
             <nav className="flex flex-col flex-1 py-4 space-y-1">
                 {menuItems.map((item) => {
-                    const isActive = pathname === item.path
+                    const isProfileRoot = pathname === '/profile'
+                    const isProfileDetails = pathname.startsWith('/profile/') && pathname !== '/profile'
+                    const isActive = item.path === '/profile'
+                        ? (isManager ? isProfileRoot : (isProfileRoot || isProfileDetails))
+                        : pathname === item.path
                     return (
                         <button
                             key={item.label}

@@ -74,20 +74,20 @@ class UserStatisticsService:
                 func.coalesce(func.avg(
                     func.extract('epoch', Task.completed_at - Task.created_at) / 86400
                 ).filter(Task.task_step == TaskStep.VERIFIED), 0.0).label("avg_days"),
-
-                func.coalesce(func.sum(Task.payment).filter(
-                    Task.task_step == TaskStep.VERIFIED
-                ), 0).label("profit"),
-
-                func.coalesce(func.avg(Task.payment).filter(
-                    Task.task_step == TaskStep.VERIFIED
-                ), 0.0).label("avg_payment"),
             )
             .join(TaskOperation, TaskOperation.task_id == Task.id)
             .join(executors, executors.c.task_id == TaskOperation.id) #type: ignore
             .where(*base_executors)
         )
         s = task_stats.one()
+
+        earnings_query = select(
+            func.coalesce(func.sum(TaskPointHistory.earned_amount), 0).label("profit"),
+            func.coalesce(func.avg(TaskPointHistory.earned_amount), 0.0).label("avg_payment"),
+        ).where(TaskPointHistory.user_id == user.id)
+        if period_start:
+            earnings_query = earnings_query.where(TaskPointHistory.period_date >= period_start)
+        earnings = (await self.db.execute(earnings_query)).one()
 
         points_query = select(func.coalesce(func.sum(TaskPointHistory.points), 0)).where(
             TaskPointHistory.user_id == user.id
@@ -153,8 +153,8 @@ class UserStatisticsService:
             completed_before_deadline=s.before_deadline or 0,
             completed_after_deadline=s.after_deadline or 0,
             avg_days_to_complete_task=float(s.avg_days or 0.0),
-            profit_for_period=s.profit or 0,
-            avg_payment_per_task=float(s.avg_payment or 0.0),
+            profit_for_period=earnings.profit or 0,
+            avg_payment_per_task=float(earnings.avg_payment or 0.0),
             percent_of_success=percent_of_success,
             count_of_task_as_head=count_of_tasks_as_head,
             avg_size_of_group=avg_size_of_group,
@@ -169,8 +169,8 @@ class UserStatisticsService:
                 completed_before_deadline=s.before_deadline or 0,
                 completed_after_deadline=s.after_deadline or 0,
                 avg_days_to_complete_task=float(s.avg_days or 0.0),
-                profit_for_period=s.profit or 0,
-                avg_payment_per_task=float(s.avg_payment or 0.0),
+                profit_for_period=earnings.profit or 0,
+                avg_payment_per_task=float(earnings.avg_payment or 0.0),
                 percent_of_success=percent_of_success,
                 count_of_task_as_head=count_of_tasks_as_head,
                 avg_size_of_group=avg_size_of_group,
@@ -214,11 +214,6 @@ class UserStatisticsService:
                     Task.completed_at >= period_start if period_start else True
                 ).label("failed"),
 
-                func.coalesce(func.sum(Task.payment).filter(
-                    Task.task_step == TaskStep.VERIFIED,
-                    Task.completed_at >= period_start if period_start else True
-                ), 0).label("profit"),
-
                 func.count(Task.id).filter(
                     Task.task_type == TaskType.GROUP,
                     Task.task_step == TaskStep.VERIFIED,
@@ -236,6 +231,13 @@ class UserStatisticsService:
             .where(executors.c.user_id == user_id)
         )
         stats = task_stats.one()
+
+        profit_query = select(
+            func.coalesce(func.sum(TaskPointHistory.earned_amount), 0)
+        ).where(TaskPointHistory.user_id == user_id)
+        if period_start:
+            profit_query = profit_query.where(TaskPointHistory.period_date >= period_start)
+        profit_for_period = await self.db.scalar(profit_query)
 
         points_and_available = await self.db.execute(
             select(
@@ -316,7 +318,7 @@ class UserStatisticsService:
             leaderboard_position=leaderboard_position,
             tasks_available=pa.tasks_available or 0,
             tasks_verified=stats.verified or 0,
-            profit_for_period=stats.profit,
+            profit_for_period=profit_for_period or 0,
             success_rate=(stats.verified / total * 100) if total > 0 else 0.0,
             group_tasks_completed=stats.group_verified or 0,
             avg_team_size=float(avg_team_size or 0.0),
@@ -433,7 +435,6 @@ class UserStatisticsService:
             for idx, row in enumerate(rows)
             if float(row.success_rate or 0.0) >= min_success_rate
         ]
-
 
 
 

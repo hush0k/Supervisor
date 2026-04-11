@@ -12,7 +12,7 @@ from app.modules.task.schemas.task import (
     TaskCreate,
     TaskSort,
     TaskFilter,
-    TaskUpdate, TakeTaskRequest
+    TaskUpdate, TakeTaskRequest, TaskAccessUsersUpdate, TaskParticipantsResponse
 )
 from app.modules.task.services.task import TaskService
 from app.modules.task_operations.schema.task_operation import TaskOperationCreate
@@ -48,7 +48,13 @@ async def create_task(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Нужно указать хотя бы одного допущенного сотрудника",
         )
-    task = await service.create(task_in, current_user.company_id)    # type: ignore
+    try:
+        task = await service.create(task_in, current_user.company_id)    # type: ignore
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
     await operation_service.create(task.id, task_operation_in)
     return task
 
@@ -123,9 +129,92 @@ async def update_task(
             status_code=status.HTTP_404_NOT_FOUND, detail="Задание не найдено"
         )
 
-    task = await service.update(task_id, task_in)
+    try:
+        task = await service.update(task_id, task_in)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e),
+        ) from e
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Подтвержденную задачу нельзя изменять",
+        )
 
     return task
+
+
+@router.get("/{task_id}/accessed-users", response_model=list[int])
+async def get_task_accessed_users(
+    task_id: int,
+    service: ServiceDep,
+    _current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
+) -> list[int]:
+    task = await service.get_by_id(task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Задание не найдено"
+        )
+
+    users_ids = await service.get_accessed_users_ids(task_id)
+    if users_ids is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Операции задания не найдены"
+        )
+    return users_ids
+
+
+@router.patch("/{task_id}/accessed-users", response_model=list[int])
+async def update_task_accessed_users(
+    task_id: int,
+    body: TaskAccessUsersUpdate,
+    service: ServiceDep,
+    current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
+) -> list[int]:
+    if not body.accessed_users_ids:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Нужно указать хотя бы одного допущенного сотрудника",
+        )
+
+    users_ids = await service.update_accessed_users(
+        task_id=task_id,
+        accessed_user_ids=body.accessed_users_ids,
+        company_id=current_user.company_id,  # type: ignore[arg-type]
+    )
+    if users_ids is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Нельзя изменить допущенных сотрудников у подтвержденной задачи",
+        )
+    return users_ids
+
+
+@router.get("/{task_id}/participants", response_model=TaskParticipantsResponse)
+async def get_task_participants(
+    task_id: int,
+    service: ServiceDep,
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> TaskParticipantsResponse:
+    task = await service.get_by_id(task_id)
+    if not task:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Задание не найдено"
+        )
+
+    if task.company_id != current_user.company_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Нет доступа к заданию"
+        )
+
+    participants = await service.get_task_participants(task_id)
+    if not participants:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND, detail="Операции задания не найдены"
+        )
+
+    return participants
 
 
 @router.delete("/{task_id}", status_code=status.HTTP_204_NO_CONTENT)

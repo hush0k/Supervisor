@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, ConfigDict
 
 class PositionBase(BaseModel):
     name: Annotated[str, Field(min_length=1, max_length=100)]
+    head_of_group: bool = False
 
 
 class PositionCreate(PositionBase):
@@ -13,6 +14,7 @@ class PositionCreate(PositionBase):
 
 class PositionUpdate(BaseModel):
     name: Optional[Annotated[str, Field(min_length=1, max_length=100)]] = None
+    head_of_group: Optional[bool] = None
 
 
 class PositionResponse(PositionBase):

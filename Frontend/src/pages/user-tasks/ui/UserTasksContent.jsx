@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { BiTask } from 'react-icons/bi'
 import { FiCalendar, FiSearch, FiZap } from 'react-icons/fi'
 import { MdOutlineTaskAlt, MdPendingActions } from 'react-icons/md'
@@ -9,6 +9,8 @@ import { Button } from '@/shared/ui/button'
 import { DashboardTaskPriorityChart } from '@/pages/dashboard/ui/DashboardTaskPriorityChart'
 import { DashboardDeadlineChart } from '@/pages/dashboard/ui/DashboardDeadlineChart'
 import { tasksApi } from '@/shared/api/tasks'
+import { usersApi } from '@/shared/api/users'
+import { useAuthStore } from '@/entities/user/model/store'
 import {
     Dialog,
     DialogContent,
@@ -44,6 +46,50 @@ function formatDate(value) {
     return new Date(value).toLocaleDateString('ru-RU')
 }
 
+function formatMoney(value) {
+    return `${Number(value || 0).toLocaleString('ru-RU')} ₸`
+}
+
+function buildGroupPayoutPreview(task, teamSize) {
+    const total = Number(task?.payment || 0)
+    if (!teamSize || teamSize <= 0) {
+        return { head: 0, memberBase: 0, memberMax: 0 }
+    }
+
+    if (task?.head_payment === null || task?.head_payment === undefined) {
+        const base = Math.floor(total / teamSize)
+        const remainder = total - (base * teamSize)
+        return {
+            head: base + (remainder > 0 ? 1 : 0),
+            memberBase: base,
+            memberMax: base + (remainder > 1 ? 1 : 0),
+        }
+    }
+
+    const head = Number(task.head_payment || 0)
+    if (teamSize === 1) {
+        return { head: total, memberBase: 0, memberMax: 0 }
+    }
+
+    const rest = Math.max(total - head, 0)
+    const membersCount = teamSize - 1
+    const base = Math.floor(rest / membersCount)
+    const remainder = rest - (base * membersCount)
+    return {
+        head,
+        memberBase: base,
+        memberMax: base + (remainder > 0 ? 1 : 0),
+    }
+}
+
+function isAssignableCrewMember(emp, currentUserId) {
+    if (!emp) return false
+    if (emp.id === currentUserId) return false
+    const role = String(emp.role || '').toLowerCase()
+    if (role === 'admin' || role === 'supervisor') return false
+    return true
+}
+
 function daysLeft(deadline) {
     const oneDay = 24 * 60 * 60 * 1000
     const now = new Date()
@@ -67,7 +113,7 @@ function StatCard({ icon, label, value, accent }) {
     )
 }
 
-function TaskCard({ task, onOpen, onTake, takingId }) {
+function TaskCard({ task, onOpen, onTake, takingId, canLeadGroup }) {
     const priority = PRIORITY_UI[task.priority] ?? PRIORITY_UI.medium
     const step = STEP_UI[task.task_step] ?? STEP_UI.available
     const left = daysLeft(task.deadline)
@@ -87,6 +133,26 @@ function TaskCard({ task, onOpen, onTake, takingId }) {
             </div>
 
             <p className="text-sm text-gray-600 line-clamp-3 min-h-[3.75rem]">{task.description}</p>
+
+            <div className="text-xs border bg-gray-50 p-2.5">
+                {task.task_type === 'solo' ? (
+                    <p className="text-gray-700">Оплата: <span className="font-semibold">{formatMoney(task.payment)}</span></p>
+                ) : task.head_payment === null || task.head_payment === undefined ? (
+                    <p className="text-gray-700">
+                        Общая сумма: <span className="font-semibold">{formatMoney(task.payment)}</span>. Делится поровну между участниками.
+                    </p>
+                ) : (
+                    <div className="space-y-0.5">
+                        <p className="text-gray-700">Общая сумма: <span className="font-semibold">{formatMoney(task.payment)}</span></p>
+                        <p className="text-blue-700">Бригадир: <span className="font-semibold">{formatMoney(task.head_payment)}</span></p>
+                        <p className="text-emerald-700">
+                            {canLeadGroup
+                                ? `Остаток команде: ${formatMoney(Math.max((task.payment || 0) - (task.head_payment || 0), 0))}`
+                                : 'Для участников: остаток делится поровну'}
+                        </p>
+                    </div>
+                )}
+            </div>
 
             <div className="flex items-center justify-between text-xs">
                 <span className="inline-flex items-center gap-1 text-gray-500">
@@ -119,12 +185,60 @@ function TaskCard({ task, onOpen, onTake, takingId }) {
 }
 
 export function UserTasksContent() {
+    const currentUser = useAuthStore(s => s.user)
+    const canLeadGroup = currentUser?.role === 'head' || !!currentUser?.position?.head_of_group
     const [activeTab, setActiveTab] = useState('all')
     const [search, setSearch] = useState('')
     const [selectedTask, setSelectedTask] = useState(null)
     const [takingId, setTakingId] = useState(null)
     const [actionError, setActionError] = useState('')
+    const [crewTask, setCrewTask] = useState(null)
+    const [crewMembers, setCrewMembers] = useState([])
+    const [employees, setEmployees] = useState([])
+    const [employeesLoading, setEmployeesLoading] = useState(false)
     const { data, isLoading, isError, refetch } = useUserTasksBoard()
+
+    useEffect(() => {
+        setEmployeesLoading(true)
+        usersApi.getEmployees()
+            .then(setEmployees)
+            .catch(() => setEmployees([]))
+            .finally(() => setEmployeesLoading(false))
+    }, [])
+
+    async function submitTakeTask(taskId, executorsIds = []) {
+        try {
+            setActionError('')
+            setTakingId(taskId)
+            await tasksApi.takeTask(taskId, executorsIds)
+            await refetch()
+            setSelectedTask(null)
+            setCrewTask(null)
+            setCrewMembers([])
+        } catch (e) {
+            const detail = e.response?.data?.detail
+            setActionError(detail || 'Не удалось выбрать задачу')
+        } finally {
+            setTakingId(null)
+        }
+    }
+
+    function handleTake(task) {
+        if (task.task_type === 'group' && canLeadGroup) {
+            setCrewTask(task)
+            setCrewMembers([])
+            return
+        }
+        submitTakeTask(task.id, [])
+    }
+
+    function toggleCrewMember(userId) {
+        setCrewMembers(prev => (
+            prev.includes(userId)
+                ? prev.filter(id => id !== userId)
+                : [...prev, userId]
+        ))
+    }
 
     const stats = data?.stats ?? {
         total: 0,
@@ -265,20 +379,8 @@ export function UserTasksContent() {
                                 task={task}
                                 takingId={takingId}
                                 onOpen={setSelectedTask}
-                                onTake={async (item) => {
-                                    try {
-                                        setActionError('')
-                                        setTakingId(item.id)
-                                        await tasksApi.takeTask(item.id, [])
-                                        await refetch()
-                                        setSelectedTask(null)
-                                    } catch (e) {
-                                        const detail = e.response?.data?.detail
-                                        setActionError(detail || 'Не удалось выбрать задачу')
-                                    } finally {
-                                        setTakingId(null)
-                                    }
-                                }}
+                                onTake={handleTake}
+                                canLeadGroup={canLeadGroup}
                             />
                         ))}
                     </div>
@@ -314,6 +416,24 @@ export function UserTasksContent() {
                                 <p className="text-xs text-gray-500">Тип задачи</p>
                                 <p className="font-semibold">{selectedTask?.task_type === 'group' ? 'Групповая' : 'Соло'}</p>
                             </div>
+                            <div className="bg-gray-50 border p-3 col-span-2">
+                                <p className="text-xs text-gray-500">Оплата</p>
+                                {selectedTask?.task_type === 'solo' ? (
+                                    <p className="font-semibold">{formatMoney(selectedTask?.payment)}</p>
+                                ) : selectedTask?.head_payment === null || selectedTask?.head_payment === undefined ? (
+                                    <p className="font-semibold">
+                                        {formatMoney(selectedTask?.payment)} · делится поровну между участниками
+                                    </p>
+                                ) : (
+                                    <div className="space-y-0.5">
+                                        <p className="font-semibold">Общая сумма: {formatMoney(selectedTask?.payment)}</p>
+                                        <p className="text-blue-700">Бригадир: {formatMoney(selectedTask?.head_payment)}</p>
+                                        <p className="text-emerald-700">
+                                            Участникам: {formatMoney(Math.max((selectedTask?.payment || 0) - (selectedTask?.head_payment || 0), 0))} делится поровну
+                                        </p>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     </div>
 
@@ -321,25 +441,102 @@ export function UserTasksContent() {
                         <Button variant="outline" onClick={() => setSelectedTask(null)}>Закрыть</Button>
                         {selectedTask?.task_step === 'available' && (
                             <Button
-                                onClick={async () => {
-                                    try {
-                                        setActionError('')
-                                        setTakingId(selectedTask.id)
-                                        await tasksApi.takeTask(selectedTask.id, [])
-                                        await refetch()
-                                        setSelectedTask(null)
-                                    } catch (e) {
-                                        const detail = e.response?.data?.detail
-                                        setActionError(detail || 'Не удалось выбрать задачу')
-                                    } finally {
-                                        setTakingId(null)
-                                    }
-                                }}
+                                onClick={() => handleTake(selectedTask)}
                                 disabled={takingId === selectedTask?.id}
                             >
                                 {takingId === selectedTask?.id ? 'Выбор...' : 'Выбрать задачу'}
                             </Button>
                         )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={!!crewTask} onOpenChange={(open) => !open && setCrewTask(null)}>
+                <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="text-xl font-extrabold">Сформировать бригаду</DialogTitle>
+                    </DialogHeader>
+
+                    <div className="space-y-3">
+                        <p className="text-sm text-gray-600">
+                            Выберите сотрудников, которых хотите добавить в групповую задачу:
+                            <span className="font-semibold"> {crewTask?.name}</span>
+                        </p>
+
+                        {crewTask?.group_size_limit ? (
+                            <p className="text-xs text-gray-500">
+                                Лимит группы: {crewTask.group_size_limit} (включая вас).
+                            </p>
+                        ) : null}
+
+                        {crewTask && (
+                            <div className="border bg-gray-50 p-3 text-xs space-y-1">
+                                {(() => {
+                                    const teamSize = 1 + crewMembers.length
+                                    const payout = buildGroupPayoutPreview(crewTask, teamSize)
+                                    return (
+                                        <>
+                                            <p className="text-gray-600">
+                                                Текущий состав: <span className="font-semibold">{teamSize}</span>
+                                            </p>
+                                            <p className="text-blue-700">
+                                                Вам (бригадиру): <span className="font-semibold">{formatMoney(payout.head)}</span>
+                                            </p>
+                                            {teamSize > 1 && (
+                                                <p className="text-emerald-700">
+                                                    Участникам: <span className="font-semibold">
+                                                        {payout.memberBase === payout.memberMax
+                                                            ? formatMoney(payout.memberBase)
+                                                            : `${formatMoney(payout.memberBase)} – ${formatMoney(payout.memberMax)}`}
+                                                    </span> каждому
+                                                </p>
+                                            )}
+                                        </>
+                                    )
+                                })()}
+                            </div>
+                        )}
+
+                        <div className="border max-h-64 overflow-y-auto divide-y">
+                            {employeesLoading ? (
+                                <div className="p-3 text-sm text-gray-400">Загрузка сотрудников...</div>
+                            ) : employees.length === 0 ? (
+                                <div className="p-3 text-sm text-gray-400">Нет сотрудников для выбора</div>
+                            ) : (
+                                employees
+                                    .filter(emp => isAssignableCrewMember(emp, currentUser?.id))
+                                    .map(emp => {
+                                        const checked = crewMembers.includes(emp.id)
+                                        const limitReached = crewTask?.group_size_limit
+                                            ? crewMembers.length >= Math.max(crewTask.group_size_limit - 1, 0)
+                                            : false
+                                        const disabled = !checked && limitReached
+                                        return (
+                                            <button
+                                                key={emp.id}
+                                                type="button"
+                                                onClick={() => !disabled && toggleCrewMember(emp.id)}
+                                                className={`w-full px-3 py-2 text-left text-sm flex items-center justify-between ${
+                                                    disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-accent'
+                                                } ${checked ? 'bg-primary/5' : ''}`}
+                                            >
+                                                <span className="truncate">{emp.last_name} {emp.first_name}</span>
+                                                <span className="text-xs text-gray-500">{emp.login}</span>
+                                            </button>
+                                        )
+                                    })
+                            )}
+                        </div>
+                    </div>
+
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setCrewTask(null)}>Отмена</Button>
+                        <Button
+                            onClick={() => crewTask && submitTakeTask(crewTask.id, crewMembers)}
+                            disabled={!crewTask || takingId === crewTask?.id}
+                        >
+                            {takingId === crewTask?.id ? 'Сохранение...' : 'Взять задачу с бригадой'}
+                        </Button>
                     </DialogFooter>
                 </DialogContent>
             </Dialog>

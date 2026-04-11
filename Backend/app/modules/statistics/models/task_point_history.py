@@ -30,6 +30,7 @@ class TaskPointHistory(Base, TimestampMixin):
     deadline_multiplier: Mapped[float] = mapped_column(Float, nullable=False)
     raw_points: Mapped[float] = mapped_column(Float, nullable=False)
     points: Mapped[int] = mapped_column(Integer, nullable=False)
+    earned_amount: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
     # Timestamps
     calculated_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.now())

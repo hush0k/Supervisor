@@ -3,7 +3,9 @@ from typing import Optional
 from fastapi import HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import selectinload
 
+from app.modules.base_module.enums import TaskType, Role
 from app.modules.task.model.task import Task
 from app.modules.task_operations.model.task_operation import TaskOperation
 from app.modules.task_operations.schema.task_operation import TaskOperationCreate, TaskOperationBase, \
@@ -28,10 +30,9 @@ class TaskOperationService:
         if task_in.accessed_users_ids:
             unique_ids = list(set(task_in.accessed_users_ids))
             result = await self.db.execute(
-                select(User).where(
-                    User.id.in_(unique_ids),
-                    User.company_id == task.company_id,
-                )
+                select(User)
+                .options(selectinload(User.position))
+                .where(User.id.in_(unique_ids), User.company_id == task.company_id)
             )
             accessed_users_list = list(result.scalars().all())
             if len(accessed_users_list) != len(unique_ids):
@@ -39,6 +40,17 @@ class TaskOperationService:
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Список допущенных сотрудников содержит некорректные id",
                 )
+            if task.task_type == TaskType.GROUP:
+                not_group_heads = [
+                    user.id
+                    for user in accessed_users_list
+                    if user.role != Role.HEAD and not bool(user.position and user.position.head_of_group)
+                ]
+                if not_group_heads:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Для групповой задачи допущенными могут быть только бригадиры (head_of_group)",
+                    )
             task_operation.accessed_users = accessed_users_list
 
         if task_in.executors_ids:
@@ -88,4 +100,3 @@ class TaskOperationService:
         await self.db.delete(task_operation)
         await self.db.flush()
         return True
-

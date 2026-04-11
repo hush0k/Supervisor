@@ -29,12 +29,14 @@ class Task(Base, TimestampMixin):
     is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
     task_type: Mapped[TaskType] = mapped_column(Enum(TaskType), nullable=False)
     payment: Mapped[int] = mapped_column(Integer, nullable=False)
+    head_payment: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     duration: Mapped[int] = mapped_column(Integer, nullable=False)
     city: Mapped[City] = mapped_column(Enum(City), nullable=True)
     task_step: Mapped[TaskStep] = mapped_column(Enum(TaskStep), nullable=False, default=TaskStep.AVAILABLE)
     completed_at: Mapped[Optional[Date]] = mapped_column(Date, nullable=True)
     verified_at: Mapped[Optional[Date]] = mapped_column(Date, nullable=True)
     quality_status: Mapped[QualityStatus] = mapped_column(Enum(QualityStatus), nullable=True)
+    group_size_limit: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     priority: Mapped[Priority] = mapped_column(
         Enum(
             Priority,

@@ -13,11 +13,14 @@ class TaskBase(BaseModel):
     is_active: Annotated[bool, Field(default=True)]
     task_type: Annotated[TaskType, Field(default=TaskType.SOLO)]
     payment: Annotated[int, Field(ge=0, default=0)]
+    head_payment: Optional[Annotated[int, Field(ge=0)]] = None
     city: City
     priority: Annotated[Priority, Field(default=Priority.MEDIUM)]
+    group_size_limit: Optional[Annotated[int, Field(gt=0)]] = None
 
 
 class TaskCreate(TaskBase):
+    payment: Annotated[int, Field(gt=0)]
     duration: Optional[Annotated[int, Field(gt=0)]] = None
 
     @field_validator("deadline")
@@ -38,6 +41,14 @@ class TaskCreate(TaskBase):
             self.duration = max(weeks, 1)
         return self
 
+    @model_validator(mode="after")
+    def validate_group_payments(self) -> "TaskCreate":
+        if self.task_type != TaskType.GROUP and self.head_payment is not None:
+            raise ValueError("Поле выплаты бригадиру доступно только для групповой задачи")
+        if self.task_type == TaskType.GROUP and self.head_payment is not None and self.head_payment > self.payment:
+            raise ValueError("Выплата бригадиру не может быть больше общей суммы")
+        return self
+
 
 class TaskUpdate(BaseModel):
     name: Optional[Annotated[str, Field(min_length=1, max_length=100)]] = None
@@ -46,10 +57,12 @@ class TaskUpdate(BaseModel):
     is_active: Optional[bool] = None
     task_type: Optional[TaskType] = None
     payment: Optional[Annotated[int, Field(ge=0)]] = None
+    head_payment: Optional[Annotated[int, Field(ge=0)]] = None
     duration: Optional[Annotated[int, Field(gt=0)]] = None
     city: Optional[City] = None
     task_step: Optional[TaskStep] = None
     priority: Optional[Priority] = None
+    group_size_limit: Optional[Annotated[int, Field(gt=0)]] = None
 
     @field_validator("deadline")
     @classmethod
@@ -57,6 +70,15 @@ class TaskUpdate(BaseModel):
         if v is not None and v < date.today():
             raise ValueError("Дедлайн не может быть раньше сегодняшнего дня")
         return v
+
+    @model_validator(mode="after")
+    def validate_group_payments(self) -> "TaskUpdate":
+        if self.task_type == TaskType.GROUP and self.head_payment is not None and self.payment is not None:
+            if self.head_payment > self.payment:
+                raise ValueError("Выплата бригадиру не может быть больше общей суммы")
+        if self.task_type is not None and self.task_type != TaskType.GROUP and self.head_payment is not None:
+            raise ValueError("Поле выплаты бригадиру доступно только для групповой задачи")
+        return self
 
 
 class TaskResponse(TaskBase):
@@ -109,3 +131,19 @@ class TaskSort(BaseModel):
 
 class TakeTaskRequest(BaseModel):
     executors_ids: List[int] = []
+
+
+class TaskAccessUsersUpdate(BaseModel):
+    accessed_users_ids: List[int] = []
+
+
+class TaskParticipantUser(BaseModel):
+    id: int
+    first_name: str
+    last_name: str
+    login: str
+
+
+class TaskParticipantsResponse(BaseModel):
+    accessed_users: List[TaskParticipantUser] = []
+    executors: List[TaskParticipantUser] = []

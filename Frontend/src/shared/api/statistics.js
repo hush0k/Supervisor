@@ -8,4 +8,10 @@ export const statisticsApi = {
     getChart: (userId, metric = 'total_points') =>
         axiosInstance.get(`/user_statistics/chart/${userId}`, { params: { metric } })
             .then(r => r.data),
+
+    getTaskPointsHistoryAll: () =>
+        axiosInstance.get('/task_points_history/all').then(r => r.data),
+
+    getTaskPointsHistoryByUser: (userId) =>
+        axiosInstance.get(`/task_points_history/user/${userId}`).then(r => r.data),
 }

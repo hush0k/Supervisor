@@ -17,6 +17,7 @@ class TaskPointsHistoryResponse(BaseModel):
     deadline_multiplier: float
     raw_points: float
     points: int
+    earned_amount: int
     calculated_at: datetime
 
 
@@ -31,6 +32,7 @@ class TaskPointsHistoryCreate(BaseModel):
     deadline_multiplier: float
     raw_points: float
     points: int
+    earned_amount: int
 
 
 class TaskPointsHistoryFilter(BaseModel):

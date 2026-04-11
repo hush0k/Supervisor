@@ -1,10 +1,16 @@
 import { LeaderboardAvatar } from './LeaderboardAvatar'
+import { useNavigate } from 'react-router-dom'
 
 export function LeaderboardRankRow({ entry, index }) {
+    const navigate = useNavigate()
     const isEven = index % 2 === 0
 
     return (
-        <div className={`flex items-center gap-4 px-6 py-3 border-b last:border-0 transition-colors hover:bg-accent/60 ${isEven ? 'bg-white' : 'bg-gray-50/50'}`}>
+        <button
+            type="button"
+            onClick={() => navigate(`/profile/${entry.user_id}`)}
+            className={`w-full text-left flex items-center gap-4 px-6 py-3 border-b last:border-0 transition-colors hover:bg-accent/60 ${isEven ? 'bg-white' : 'bg-gray-50/50'}`}
+        >
             <span className="w-6 text-center text-sm font-bold text-gray-400 shrink-0">
                 {entry.rank_position}
             </span>
@@ -26,6 +32,6 @@ export function LeaderboardRankRow({ entry, index }) {
                 </span>
                 <span className="text-xs text-gray-400">очков</span>
             </div>
-        </div>
+        </button>
     )
 }

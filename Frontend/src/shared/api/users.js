@@ -1,6 +1,9 @@
 import axiosInstance from '@/shared/api/axios'
 
 export const usersApi = {
+    getById: (id) =>
+        axiosInstance.get(`/user/${id}`).then(r => r.data),
+
     getEmployees: () =>
         axiosInstance.get('/user/my-employees').then(r => r.data),
 
@@ -26,4 +29,7 @@ export const usersApi = {
 
     getPositions: () =>
         axiosInstance.get('/position/').then(r => r.data),
+
+    createPosition: (data) =>
+        axiosInstance.post('/position/create', data).then(r => r.data),
 }

@@ -21,6 +21,7 @@ import { BsBuildingFill } from "react-icons/bs";
 import { BiTask } from "react-icons/bi";
 import { RiTeamFill } from "react-icons/ri"
 import { AiFillControl } from "react-icons/ai"
+import { FiActivity } from "react-icons/fi"
 
 
 export function Header({ variant = "default" }) {
@@ -53,15 +54,13 @@ export function Header({ variant = "default" }) {
         navigate(isAuthenticated ? "/dashboard" : "/home");
     };
 
-    const handleNavigation = (path) => {
-        navigate(path);
-    };
-
     const managerItems = [
         {label: "Главная", path: "/dashboard", icon: <MdDashboard />},
         {label: "Таблица лидеров", path: "/leaderboard", icon: <MdLeaderboard />},
         {label: "Сотрудники", path: "/team", icon: <RiTeamFill />},
         {label: "Задачи", path: "/tasks", icon: <BiTask />},
+        {label: "Архив задач", path: "/tasks-archive", icon: <BiTask />},
+        {label: "История очков", path: "/task-points-history", icon: <FiActivity />},
         {label: "Моя компания", path: "/company", icon: <BsBuildingFill />},
     ];
     const userItems = [
@@ -74,7 +73,9 @@ export function Header({ variant = "default" }) {
         { label: "Главная", path: "/dashboard", icon: <MdDashboard size={18} /> },
         { label: "Сотрудники", path: "/team", icon: <RiTeamFill size={18} /> },
         { label: "Задачи", path: "/tasks", icon: <BiTask size={18} /> },
+        { label: "Архив задач", path: "/tasks-archive", icon: <BiTask size={18} /> },
         { label: "Проверка задач", path: "/task-check", icon: <AiFillControl size={18} /> },
+        { label: "История очков", path: "/task-points-history", icon: <FiActivity size={18} /> },
         { label: "Таблица лидеров", path: "/leaderboard", icon: <MdLeaderboard size={18} /> },
         { label: "Моя компания", path: "/company", icon: <BsBuildingFill size={18} /> },
     ]

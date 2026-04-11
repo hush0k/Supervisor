@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { Link } from 'react-router-dom'
 import { tasksApi } from '@/shared/api/tasks'
 import { usersApi } from '@/shared/api/users'
 import { Button } from '@/shared/ui/button'
@@ -32,6 +33,7 @@ import { FiSearch, FiEdit2, FiTrash2, FiPlus, FiFilter } from 'react-icons/fi'
 import { MdOutlineTaskAlt, MdPendingActions } from 'react-icons/md'
 import { HiOutlineClipboardList } from 'react-icons/hi'
 import { IoCheckmarkDoneCircleOutline } from 'react-icons/io5'
+import { TaskDetailsDialog } from '@/shared/ui/TaskDetailsDialog'
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -39,7 +41,6 @@ const STEP_CONFIG = {
     available:   { label: 'Доступна',    className: 'bg-blue-100 text-blue-700' },
     in_progress: { label: 'В процессе',  className: 'bg-amber-100 text-amber-700' },
     completed:   { label: 'Выполнена',   className: 'bg-gray-100 text-gray-600' },
-    verified:    { label: 'Подтверждена',className: 'bg-emerald-100 text-emerald-700' },
     failed:      { label: 'Отклонена',   className: 'bg-red-100 text-red-600' },
 }
 
@@ -78,11 +79,13 @@ const EMPTY_FORM = {
     description: '',
     deadline: '',
     payment: '',
+    head_payment: '',
     task_type: 'solo',
     city: 'almaty',
     priority: 'medium',
     is_active: true,
     accessed_user_ids: [],
+    group_size_limit: '',
 }
 
 function formatPayment(v) {
@@ -118,6 +121,7 @@ function StatCard({ icon, label, value, accent }) {
 
 export function TasksContent() {
     const [tasks, setTasks]           = useState([])
+    const [archivedCount, setArchivedCount] = useState(0)
     const [loading, setLoading]       = useState(true)
     const [fetchError, setFetchError] = useState('')
 
@@ -127,14 +131,18 @@ export function TasksContent() {
     const [typeFilter, setTypeFilter] = useState('ALL')
     const [cityFilter, setCityFilter] = useState('ALL')
     const [sortBy, setSortBy]         = useState('deadline_asc')
+    const [currentPage, setCurrentPage] = useState(1)
+    const PAGE_SIZE = 7
 
     // modal
     const [showModal, setShowModal]   = useState(false)
     const [editTarget, setEditTarget] = useState(null)
+    const [previewTask, setPreviewTask] = useState(null)
     const [form, setForm]             = useState(EMPTY_FORM)
     const [formError, setFormError]   = useState('')
     const [submitting, setSubmitting] = useState(false)
     const [employeeSearch, setEmployeeSearch] = useState('')
+    const [accessLoading, setAccessLoading] = useState(false)
 
     // employees for group task picker
     const [employees, setEmployees] = useState([])
@@ -154,7 +162,10 @@ export function TasksContent() {
         setFetchError('')
         try {
             const data = await tasksApi.getAll({ limit: 200 })
-            setTasks(data)
+            const verified = data.filter(t => t.task_step === 'verified')
+            const active = data.filter(t => t.task_step !== 'verified')
+            setArchivedCount(verified.length)
+            setTasks(active)
         } catch (e) {
             if (e.response?.status === 404) setTasks([])
             else setFetchError('Не удалось загрузить задачи')
@@ -168,8 +179,8 @@ export function TasksContent() {
         total:      tasks.length,
         active:     tasks.filter(t => t.task_step === 'available').length,
         inProgress: tasks.filter(t => t.task_step === 'in_progress').length,
-        verified:   tasks.filter(t => t.task_step === 'verified').length,
-    }), [tasks])
+        archived:   archivedCount,
+    }), [tasks, archivedCount])
 
     // ── Filtered list ──────────────────────────────────────────────────────
     const filtered = useMemo(() => {
@@ -189,6 +200,17 @@ export function TasksContent() {
         return list
     }, [tasks, search, stepFilter, typeFilter, cityFilter, sortBy])
 
+    useEffect(() => {
+        setCurrentPage(1)
+    }, [search, stepFilter, typeFilter, cityFilter, sortBy, tasks.length])
+
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+    const safePage = Math.min(currentPage, totalPages)
+    const pagedTasks = useMemo(() => {
+        const start = (safePage - 1) * PAGE_SIZE
+        return filtered.slice(start, start + PAGE_SIZE)
+    }, [filtered, safePage, PAGE_SIZE])
+
     // ── Modal helpers ──────────────────────────────────────────────────────
     function openAdd() {
         setEditTarget(null)
@@ -198,18 +220,30 @@ export function TasksContent() {
         setShowModal(true)
     }
 
-    function openEdit(task) {
+    async function openEdit(task) {
+        setAccessLoading(true)
+        let accessedIds = []
+        try {
+            accessedIds = await tasksApi.getAccessedUsers(task.id)
+        } catch {
+            accessedIds = []
+        } finally {
+            setAccessLoading(false)
+        }
+
         setEditTarget(task)
         setForm({
             name:              task.name,
             description:       task.description,
             deadline:          task.deadline?.slice(0, 10) ?? '',
             payment:           String(task.payment),
+            head_payment:      task.head_payment !== null && task.head_payment !== undefined ? String(task.head_payment) : '',
             task_type:         task.task_type,
             city:              task.city,
             priority:          task.priority ?? 'medium',
             is_active:         task.is_active,
-            accessed_user_ids: [],
+            accessed_user_ids: accessedIds,
+            group_size_limit: task.group_size_limit ? String(task.group_size_limit) : '',
         })
         setFormError('')
         setEmployeeSearch('')
@@ -237,6 +271,12 @@ export function TasksContent() {
         setFormError('')
     }
 
+    function handleHeadPaymentChange(e) {
+        const raw = e.target.value.replace(/\D/g, '')
+        setForm(f => ({ ...f, head_payment: raw }))
+        setFormError('')
+    }
+
     async function handleSubmit(e) {
         e.preventDefault()
         setSubmitting(true)
@@ -247,15 +287,37 @@ export function TasksContent() {
             description: form.description.trim(),
             deadline:    form.deadline,
             payment:     Number(form.payment) || 0,
+            head_payment: form.task_type === 'group'
+                ? (form.head_payment ? Number(form.head_payment) : null)
+                : null,
             task_type:   form.task_type,
             city:        form.city,
             priority:    form.priority,
             is_active:   form.is_active,
+            group_size_limit: form.task_type === 'group'
+                ? (form.group_size_limit ? Number(form.group_size_limit) : null)
+                : null,
         }
 
         try {
+            if (!payload.payment || payload.payment <= 0) {
+                setFormError('Общая сумма оплаты должна быть больше 0')
+                return
+            }
+            if (payload.task_type === 'group' && payload.head_payment !== null && payload.head_payment > payload.payment) {
+                setFormError('Выплата бригадиру не может быть больше общей суммы')
+                return
+            }
+
             if (editTarget) {
-                const updated = await tasksApi.update(editTarget.id, payload)
+                if (form.accessed_user_ids.length === 0) {
+                    setFormError('Выберите хотя бы одного сотрудника, которому будет доступна задача')
+                    return
+                }
+                const updatePayload = { ...payload }
+                delete updatePayload.task_type
+                const updated = await tasksApi.update(editTarget.id, updatePayload)
+                await tasksApi.updateAccessedUsers(editTarget.id, form.accessed_user_ids)
                 setTasks(prev => prev.map(t => t.id === updated.id ? updated : t))
             } else {
                 if (form.accessed_user_ids.length === 0) {
@@ -310,6 +372,12 @@ export function TasksContent() {
                     <FiPlus size={16} />
                     Создать задачу
                 </Button>
+                <Link
+                    to="/tasks-archive"
+                    className="inline-flex items-center h-10 px-3 border bg-white hover:bg-gray-50 text-sm font-semibold text-gray-700"
+                >
+                    Архив задач
+                </Link>
             </div>
 
             <div className="flex flex-col gap-5 p-6">
@@ -321,7 +389,7 @@ export function TasksContent() {
                         accent="bg-blue-100 text-blue-600" />
                     <StatCard icon={<BiTask size={20} />}                 label="В процессе"  value={stats.inProgress}
                         accent="bg-amber-100 text-amber-600" />
-                    <StatCard icon={<IoCheckmarkDoneCircleOutline size={20} />} label="Подтверждено" value={stats.verified}
+                    <StatCard icon={<IoCheckmarkDoneCircleOutline size={20} />} label="В архиве" value={stats.archived}
                         accent="bg-emerald-100 text-emerald-600" />
                 </div>
 
@@ -432,15 +500,21 @@ export function TasksContent() {
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {filtered.map((task, idx) => {
+                                {pagedTasks.map((task, idx) => {
                                     const step = STEP_CONFIG[task.task_step] ?? { label: task.task_step, className: 'bg-gray-100 text-gray-600' }
                                     const type = TYPE_CONFIG[task.task_type] ?? { label: task.task_type, className: 'bg-gray-100 text-gray-600' }
                                     const overdue = isOverdue(task.deadline, task.task_step)
                                     const city = CITIES.find(c => c.value === task.city)?.label ?? task.city
 
                                     return (
-                                        <TableRow key={task.id} className="hover:bg-accent/50 transition-colors group">
-                                            <TableCell className="text-center text-gray-400 text-sm font-mono">{idx + 1}</TableCell>
+                                        <TableRow
+                                            key={task.id}
+                                            className="hover:bg-accent/50 transition-colors group cursor-pointer"
+                                            onClick={() => setPreviewTask(task)}
+                                        >
+                                            <TableCell className="text-center text-gray-400 text-sm font-mono">
+                                                {(safePage - 1) * PAGE_SIZE + idx + 1}
+                                            </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col">
                                                     <span className="font-semibold text-sm">{task.name}</span>
@@ -481,14 +555,21 @@ export function TasksContent() {
                                                 <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <Button
                                                         variant="ghost" size="icon"
-                                                        onClick={() => openEdit(task)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            openEdit(task)
+                                                        }}
                                                         className="h-8 w-8 text-gray-500 hover:text-primary hover:bg-primary/10"
+                                                        disabled={task.task_step === 'verified'}
                                                     >
                                                         <FiEdit2 size={14} />
                                                     </Button>
                                                     <Button
                                                         variant="ghost" size="icon"
-                                                        onClick={() => setDeleteTarget(task)}
+                                                        onClick={(e) => {
+                                                            e.stopPropagation()
+                                                            setDeleteTarget(task)
+                                                        }}
                                                         className="h-8 w-8 text-gray-500 hover:text-red-500 hover:bg-red-50"
                                                     >
                                                         <FiTrash2 size={14} />
@@ -502,6 +583,35 @@ export function TasksContent() {
                         </Table>
                     )}
                 </div>
+
+                {filtered.length > 0 && (
+                    <div className="bg-white border px-4 py-3 flex items-center justify-between">
+                        <p className="text-xs text-gray-500">
+                            Показано {(safePage - 1) * PAGE_SIZE + 1}–{Math.min(safePage * PAGE_SIZE, filtered.length)} из {filtered.length}
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={safePage <= 1}
+                            >
+                                Назад
+                            </Button>
+                            <span className="text-xs text-gray-500 min-w-20 text-center">
+                                {safePage} / {totalPages}
+                            </span>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={safePage >= totalPages}
+                            >
+                                Вперед
+                            </Button>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* ── Add / Edit Modal ──────────────────────────────────── */}
@@ -537,21 +647,59 @@ export function TasksContent() {
                             </div>
 
                             <div className="space-y-1.5">
-                                <Label htmlFor="payment">Оплата (₸)</Label>
+                                <Label htmlFor="payment">Общая сумма оплаты (₸)</Label>
                                 <Input id="payment" name="payment" type="text" placeholder="50 000"
                                     value={form.payment ? Number(form.payment).toLocaleString('ru-RU') : ''}
-                                    onChange={handlePaymentChange} />
+                                    onChange={handlePaymentChange}
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-1.5">
+                                <Label htmlFor="head_payment">Для бригадира (₸, необязательно)</Label>
+                                <Input
+                                    id="head_payment"
+                                    name="head_payment"
+                                    type="text"
+                                    placeholder={form.task_type === 'group' ? 'Например: 80 000' : 'Только для групповой задачи'}
+                                    value={form.head_payment ? Number(form.head_payment).toLocaleString('ru-RU') : ''}
+                                    onChange={handleHeadPaymentChange}
+                                    disabled={form.task_type !== 'group'}
+                                />
+                                <p className="text-xs text-gray-500">
+                                    {form.task_type === 'group'
+                                        ? 'Если поле пустое, сумма делится поровну между всеми участниками.'
+                                        : 'Для соло-задач используется только общая сумма оплаты.'}
+                                </p>
                             </div>
 
                             <div className="space-y-1.5">
                                 <Label>Тип задачи</Label>
-                                <Select value={form.task_type} onValueChange={v => setForm(f => ({ ...f, task_type: v }))}>
-                                    <SelectTrigger><SelectValue /></SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="solo">Соло</SelectItem>
-                                        <SelectItem value="group">Группа</SelectItem>
-                                    </SelectContent>
-                                </Select>
+                                <div className="grid grid-cols-2 gap-2">
+                                    <Button
+                                        type="button"
+                                        variant={form.task_type === 'solo' ? 'default' : 'outline'}
+                                        className="h-9"
+                                        disabled={!!editTarget}
+                                        onClick={() => setForm(f => ({ ...f, task_type: 'solo' }))}
+                                    >
+                                        Соло
+                                    </Button>
+                                    <Button
+                                        type="button"
+                                        variant={form.task_type === 'group' ? 'default' : 'outline'}
+                                        className="h-9"
+                                        disabled={!!editTarget}
+                                        onClick={() => setForm(f => ({ ...f, task_type: 'group' }))}
+                                    >
+                                        Групповая
+                                    </Button>
+                                </div>
+                                {editTarget && (
+                                    <p className="text-xs text-gray-500">
+                                        Тип задачи нельзя изменить после создания.
+                                    </p>
+                                )}
                             </div>
 
                             <div className="space-y-1.5">
@@ -578,73 +726,98 @@ export function TasksContent() {
                                 </Select>
                             </div>
 
-                            {!editTarget && (
-                                <div className="space-y-1.5 sm:col-span-2">
-                                    <Label className="flex items-center gap-1">
-                                        Допущенные сотрудники
-                                        {form.accessed_user_ids.length > 0 && (
-                                            <span className="ml-1 inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-primary text-white rounded-full">
-                                                {form.accessed_user_ids.length}
-                                            </span>
-                                        )}
-                                    </Label>
-                                    <p className="text-xs text-gray-500">
-                                        Выбранные сотрудники увидят задачу в доступных.
-                                    </p>
-
-                                    {employees.length === 0 ? (
-                                        <p className="text-sm text-gray-400 py-2">Нет сотрудников в компании</p>
-                                    ) : (
-                                        <>
-                                            <div className="relative">
-                                                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
-                                                <Input
-                                                    placeholder="Поиск сотрудника..."
-                                                    value={employeeSearch}
-                                                    onChange={e => setEmployeeSearch(e.target.value)}
-                                                    className="pl-8 h-8 text-sm"
-                                                />
-                                            </div>
-                                            <div className="border rounded-sm max-h-32 overflow-y-auto divide-y">
-                                                {employees
-                                                    .filter(e => `${e.first_name} ${e.last_name} ${e.login}`
-                                                        .toLowerCase()
-                                                        .includes(employeeSearch.toLowerCase()))
-                                                    .map(emp => {
-                                                        const checked = form.accessed_user_ids.includes(emp.id)
-                                                        return (
-                                                            <button
-                                                                key={emp.id}
-                                                                type="button"
-                                                                onClick={() => toggleEmployee(emp.id)}
-                                                                className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors hover:bg-accent ${checked ? 'bg-primary/5' : ''}`}
-                                                            >
-                                                                <div className={`w-4 h-4 shrink-0 border-2 flex items-center justify-center transition-colors ${checked ? 'bg-primary border-primary' : 'border-gray-300'}`}>
-                                                                    {checked && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
-                                                                </div>
-                                                                <div className="flex items-center gap-2 min-w-0">
-                                                                    <div className="w-6 h-6 shrink-0 flex items-center justify-center bg-gray-200 text-gray-600 text-xs font-bold">
-                                                                        {emp.first_name?.[0]}{emp.last_name?.[0]}
-                                                                    </div>
-                                                                    <span className="truncate font-medium">{emp.last_name} {emp.first_name}</span>
-                                                                    <span className="text-gray-400 text-xs shrink-0">{emp.login}</span>
-                                                                </div>
-                                                            </button>
-                                                        )
-                                                    })
-                                                }
-                                            </div>
-                                            {form.accessed_user_ids.length > 0 && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setForm(f => ({ ...f, accessed_user_ids: [] }))}
-                                                    className="text-xs text-gray-400 hover:text-red-500 transition-colors"
-                                                >
-                                                    Снять всех ({form.accessed_user_ids.length})
-                                                </button>
-                                            )}
-                                        </>
+                            <div className="space-y-1.5 sm:col-span-2">
+                                <Label className="flex items-center gap-1">
+                                    {form.task_type === 'group' ? 'Бригадиры (head_of_group)' : 'Допущенные сотрудники'}
+                                    {form.accessed_user_ids.length > 0 && (
+                                        <span className="ml-1 inline-flex items-center justify-center w-5 h-5 text-xs font-bold bg-primary text-white rounded-full">
+                                            {form.accessed_user_ids.length}
+                                        </span>
                                     )}
+                                </Label>
+                                <p className="text-xs text-gray-500">
+                                    {form.task_type === 'group'
+                                        ? 'Для групповой задачи выбираются только сотрудники с признаком head_of_group.'
+                                        : 'Выбранные сотрудники увидят задачу в доступных.'}
+                                </p>
+
+                                {accessLoading ? (
+                                    <p className="text-sm text-gray-400 py-2">Загрузка допущенных сотрудников...</p>
+                                ) : employees.length === 0 ? (
+                                    <p className="text-sm text-gray-400 py-2">Нет сотрудников в компании</p>
+                                ) : (
+                                    <>
+                                        <div className="relative">
+                                            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={13} />
+                                            <Input
+                                                placeholder="Поиск сотрудника..."
+                                                value={employeeSearch}
+                                                onChange={e => setEmployeeSearch(e.target.value)}
+                                                className="pl-8 h-8 text-sm"
+                                            />
+                                        </div>
+                                        <div className="border rounded-sm max-h-32 overflow-y-auto divide-y">
+                                            {(form.task_type === 'group'
+                                                ? employees.filter(e => e.position?.head_of_group)
+                                                : employees)
+                                                .filter(e => `${e.first_name} ${e.last_name} ${e.login}`
+                                                    .toLowerCase()
+                                                    .includes(employeeSearch.toLowerCase()))
+                                                .map(emp => {
+                                                    const checked = form.accessed_user_ids.includes(emp.id)
+                                                    return (
+                                                        <button
+                                                            key={emp.id}
+                                                            type="button"
+                                                            onClick={() => toggleEmployee(emp.id)}
+                                                            className={`w-full flex items-center gap-3 px-3 py-2 text-sm text-left transition-colors hover:bg-accent ${checked ? 'bg-primary/5' : ''}`}
+                                                        >
+                                                            <div className={`w-4 h-4 shrink-0 border-2 flex items-center justify-center transition-colors ${checked ? 'bg-primary border-primary' : 'border-gray-300'}`}>
+                                                                {checked && <span className="text-white text-[10px] font-bold leading-none">✓</span>}
+                                                            </div>
+                                                            <div className="flex items-center gap-2 min-w-0">
+                                                                <div className="w-6 h-6 shrink-0 flex items-center justify-center bg-gray-200 text-gray-600 text-xs font-bold">
+                                                                    {emp.first_name?.[0]}{emp.last_name?.[0]}
+                                                                </div>
+                                                                <span className="truncate font-medium">{emp.last_name} {emp.first_name}</span>
+                                                                <span className="text-gray-400 text-xs shrink-0">{emp.login}</span>
+                                                            </div>
+                                                        </button>
+                                                    )
+                                                })
+                                            }
+                                        </div>
+                                        {form.task_type === 'group' && employees.filter(e => e.position?.head_of_group).length === 0 && (
+                                            <p className="text-xs text-amber-600">
+                                                Нет сотрудников с должностью head_of_group. Создайте такую должность в разделе «Моя компания».
+                                            </p>
+                                        )}
+                                        {form.accessed_user_ids.length > 0 && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setForm(f => ({ ...f, accessed_user_ids: [] }))}
+                                                className="text-xs text-gray-400 hover:text-red-500 transition-colors"
+                                            >
+                                                Снять всех ({form.accessed_user_ids.length})
+                                            </button>
+                                        )}
+                                    </>
+                                )}
+                            </div>
+
+                            {form.task_type === 'group' && (
+                                <div className="space-y-1.5">
+                                    <Label htmlFor="group_size_limit">Лимит группы (необязательно)</Label>
+                                    <Input
+                                        id="group_size_limit"
+                                        name="group_size_limit"
+                                        type="number"
+                                        min={1}
+                                        placeholder="Например: 5"
+                                        value={form.group_size_limit}
+                                        onChange={handleChange}
+                                    />
+                                    <p className="text-xs text-gray-500">Максимальное число участников группы при взятии задачи.</p>
                                 </div>
                             )}
 
@@ -692,6 +865,12 @@ export function TasksContent() {
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            <TaskDetailsDialog
+                task={previewTask}
+                open={!!previewTask}
+                onOpenChange={open => !open && setPreviewTask(null)}
+            />
         </div>
     )
 }

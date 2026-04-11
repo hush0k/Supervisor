@@ -13,13 +13,13 @@ const PasswordInput = React.forwardRef(({ className, icon, error, value, onChang
                 type={showPassword ? "text" : "password"}
                 autoComplete="new-password"
                 className={cn(
-                    "flex h-10 w-full rounded-md border bg-transparent px-3 py-2 text-sm transition-colors",
+                    "flex h-10 w-full rounded-md border bg-white border-slate-300 px-3 py-2 text-sm transition-colors",
                     "placeholder:text-muted-foreground",
                     "focus-visible:outline-none focus-visible:ring-1",
                     "disabled:cursor-not-allowed disabled:opacity-50",
                     error
                         ? "border-red-500 focus-visible:ring-red-500"
-                        : "border-input focus-visible:ring-ring",
+                        : "focus-visible:ring-ring",
                     "pr-20",
                     className
                 )}

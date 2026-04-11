@@ -1,11 +1,11 @@
 function dynamicFontSize(str) {
     const l = str.length
-    if (l <= 2)  return 36
-    if (l <= 4)  return 30
-    if (l <= 6)  return 24
-    if (l <= 9)  return 19
-    if (l <= 12) return 15
-    return 12
+    if (l <= 2)  return 28
+    if (l <= 4)  return 24
+    if (l <= 6)  return 20
+    if (l <= 9)  return 16
+    if (l <= 12) return 13
+    return 11
 }
 
 // ─── arc math ─────────────────────────────────────────────────────────────────
@@ -23,7 +23,7 @@ function arcPoint(cx, cy, r, pct) {
 // ─── Gauge SVG ────────────────────────────────────────────────────────────────
 
 function GaugeSVG({ pct, color, value, scaleMax }) {
-    const CX = 110, CY = 118, R = 88, SW = 13
+    const CX = 100, CY = 105, R = 72, SW = 11
     const p = Math.max(0, Math.min(100, pct ?? 0))
 
     const [bgX, bgY]   = arcPoint(CX, CY, R, 100)
@@ -36,7 +36,7 @@ function GaugeSVG({ pct, color, value, scaleMax }) {
     const centerY = CY - R * 0.44
 
     return (
-        <svg viewBox="0 0 220 148" className="w-full select-none">
+        <svg viewBox="0 0 200 132" className="w-full select-none">
             {/* ── background track ── */}
             <path
                 d={`M ${CX - R},${CY} A ${R},${R} 0 0 1 ${bgX},${bgY}`}
@@ -67,9 +67,9 @@ function GaugeSVG({ pct, color, value, scaleMax }) {
             )}
 
             {/* ── scale labels — below arc endpoints ── */}
-            <text x={CX - R} y={CY + 22} textAnchor="middle" fontSize="10" fill="#c8d0da" fontFamily="inherit">0</text>
+            <text x={CX - R} y={CY + 18} textAnchor="middle" fontSize="9" fill="#c8d0da" fontFamily="inherit">0</text>
             {scaleMax && (
-                <text x={CX + R} y={CY + 22} textAnchor="middle" fontSize="10" fill="#c8d0da" fontFamily="inherit">
+                <text x={CX + R} y={CY + 18} textAnchor="middle" fontSize="9" fill="#c8d0da" fontFamily="inherit">
                     {scaleMax}
                 </text>
             )}
@@ -99,7 +99,7 @@ function KPICard({ color, title, pct, value, context, scaleMax, footer }) {
             style={{ border: '1px solid #e8ecf0', borderTop: `3px solid ${color}` }}
         >
             {/* header */}
-            <div className="px-5 pt-4 pb-0 flex items-center justify-between">
+            <div className="px-4 pt-3 pb-0 flex items-center justify-between">
                 <span className="text-[10px] tracking-widest uppercase font-semibold text-gray-400">
                     {title}
                 </span>
@@ -109,20 +109,22 @@ function KPICard({ color, title, pct, value, context, scaleMax, footer }) {
             </div>
 
             {/* gauge */}
-            <div className="px-3 pt-1 pb-0">
-                <GaugeSVG pct={pct} color={color} value={value} scaleMax={scaleMax} />
+            <div className="px-2 pt-1 pb-0 flex justify-center">
+                <div className="w-full max-w-[240px]">
+                    <GaugeSVG pct={pct} color={color} value={value} scaleMax={scaleMax} />
+                </div>
             </div>
 
             {/* context — sits just below the arc */}
             {context && (
-                <p className="text-[12px] text-gray-400 text-center leading-snug px-4 -mt-1">
+                <p className="text-[11px] text-gray-400 text-center leading-snug px-3 -mt-2">
                     {context}
                 </p>
             )}
 
             {/* footer */}
             {footer && (
-                <p className="text-[11px] text-gray-400 text-center leading-snug px-4 pt-1 pb-4 mt-auto">
+                <p className="text-[10px] text-gray-400 text-center leading-snug px-3 pt-1 pb-3 mt-auto">
                     {footer}
                 </p>
             )}
@@ -150,7 +152,7 @@ export function CompanyKPIGrid({ data }) {
     const verPct   = closed > 0 ? (ver  / closed) * 100 : 0
 
     return (
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
 
             <KPICard
                 color="#3b82f6"

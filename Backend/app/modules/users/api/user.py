@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from app.core.db import get_db
-from app.modules.base_module.dependencies import get_current_user
+from app.modules.base_module.dependencies import get_current_user, require_role
 from app.modules.base_module.enums import Role
 from app.modules.users.models.user import User
 from app.modules.users.services.user import UserService
@@ -28,13 +28,21 @@ def get_user_service(db: Annotated[AsyncSession, Depends(get_db)]) -> UserServic
 ServiceDep = Annotated[UserService, Depends(get_user_service)]
 
 
+def _can_assign_role(actor_role: Role, target_role: Role) -> bool:
+    if actor_role == Role.ADMIN:
+        return True
+    if actor_role == Role.SUPERVISOR:
+        return target_role in {Role.USER, Role.SUPERVISOR}
+    return False
+
+
 @router.post(
     "/create", response_model=UserResponse, status_code=http_status.HTTP_201_CREATED
 )
 async def create_user_endpoint(
     user_in: UserCreate,
     service: ServiceDep,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(require_role(Role.ADMIN, Role.SUPERVISOR))],
 ) -> UserResponse:
     payload = user_in.model_dump()
 
@@ -101,8 +109,30 @@ async def get_all_users(
 
 @router.patch("/{user_id}", response_model=UserResponse)
 async def update_user(
-    user_id: int, user_in: UserUpdate, service: ServiceDep
+    user_id: int,
+    user_in: UserUpdate,
+    service: ServiceDep,
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> UserResponse:
+    existing_user = await service.get_by_id(user_id)
+    if not existing_user:
+        raise HTTPException(
+            status_code=http_status.HTTP_404_NOT_FOUND, detail="Пользователь не найден"
+        )
+
+    requested_role = user_in.role if user_in.role is not None else existing_user.role
+    if not _can_assign_role(current_user.role, requested_role):
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Недостаточно прав для назначения этой роли",
+        )
+
+    if current_user.role == Role.SUPERVISOR and existing_user.role == Role.ADMIN:
+        raise HTTPException(
+            status_code=http_status.HTTP_403_FORBIDDEN,
+            detail="Супервизор не может изменять администратора",
+        )
+
     user = await service.update(user_id, user_in)
     if not user:
         raise HTTPException(

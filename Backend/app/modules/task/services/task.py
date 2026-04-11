@@ -18,6 +18,8 @@ from app.modules.task.schemas.task import (
     TaskFilter,
     TaskSort,
     TaskUpdate,
+    TaskParticipantsResponse,
+    TaskParticipantUser,
 )
 from app.modules.task_operations.model.task_operation import (
     TaskOperation,
@@ -33,6 +35,14 @@ class TaskService:
 
     async def create(self, task_in: TaskCreate, company_id: int) -> TaskResponse:
         task_data = task_in.model_dump()
+        if task_data.get("task_type") != TaskType.GROUP:
+            task_data["group_size_limit"] = None
+            task_data["head_payment"] = None
+        elif (
+            task_data.get("head_payment") is not None
+            and task_data.get("head_payment") > task_data.get("payment", 0)
+        ):
+            raise ValueError("Выплата бригадиру не может быть больше общей суммы")
 
         task = Task(**task_data, company_id=company_id)    # type: ignore
 
@@ -91,15 +101,130 @@ class TaskService:
         task = await self.get_by_id(task_id)
         if not task:
             return None
+        if task.task_step == TaskStep.VERIFIED:
+            return None
 
         updated_task = task_in.model_dump(exclude_unset=True)
+        # Task type is immutable after creation.
+        # Ignore incoming changes from API clients and keep original type.
+        if "task_type" in updated_task:
+            if updated_task["task_type"] != task.task_type:
+                logger.warning(
+                    "Blocked task_type change: task_id=%s from=%s to=%s",
+                    task_id,
+                    task.task_type,
+                    updated_task["task_type"],
+                )
+            updated_task.pop("task_type", None)
+
+        effective_payment = updated_task.get("payment", task.payment)
+        effective_head_payment = updated_task.get("head_payment", task.head_payment)
+        if task.task_type != TaskType.GROUP:
+            updated_task["head_payment"] = None
+        elif effective_head_payment is not None and effective_head_payment > effective_payment:
+            raise ValueError("Выплата бригадиру не может быть больше общей суммы")
 
         for field, value in updated_task.items():
             setattr(task, field, value)
 
+        if task.task_type != TaskType.GROUP:
+            task.group_size_limit = None
+
         await self.db.flush()
         await self.db.refresh(task)
         return task
+
+    async def get_accessed_users_ids(self, task_id: int) -> Optional[list[int]]:
+        result = await self.db.execute(
+            select(TaskOperation)
+            .options(selectinload(TaskOperation.accessed_users))
+            .where(TaskOperation.task_id == task_id)
+        )
+        task_operation = result.scalar_one_or_none()
+        if not task_operation:
+            return None
+        return [user.id for user in task_operation.accessed_users]
+
+    async def update_accessed_users(
+        self,
+        task_id: int,
+        accessed_user_ids: list[int],
+        company_id: int,
+    ) -> Optional[list[int]]:
+        task = await self.get_by_id(task_id)
+        if not task or task.company_id != company_id:
+            return None
+        if task.task_step == TaskStep.VERIFIED:
+            return None
+
+        result = await self.db.execute(
+            select(TaskOperation)
+            .options(selectinload(TaskOperation.accessed_users))
+            .where(TaskOperation.task_id == task_id)
+        )
+        task_operation = result.scalar_one_or_none()
+        if not task_operation:
+            return None
+
+        unique_ids = list(set(accessed_user_ids))
+        if unique_ids:
+            users_result = await self.db.execute(
+                select(User)
+                .options(selectinload(User.position))
+                .where(User.id.in_(unique_ids), User.company_id == task.company_id)
+            )
+            users = list(users_result.scalars().all())
+            if len(users) != len(unique_ids):
+                return None
+            if task.task_type == TaskType.GROUP:
+                invalid = [
+                    user.id
+                    for user in users
+                    if user.role != Role.HEAD and not bool(user.position and user.position.head_of_group)
+                ]
+                if invalid:
+                    return None
+        else:
+            users = []
+
+        task_operation.accessed_users = users
+        await self.db.flush()
+        await self.db.refresh(task_operation)
+        return [user.id for user in task_operation.accessed_users]
+
+    async def get_task_participants(self, task_id: int) -> Optional[TaskParticipantsResponse]:
+        result = await self.db.execute(
+            select(TaskOperation)
+            .options(
+                selectinload(TaskOperation.accessed_users),
+                selectinload(TaskOperation.executors),
+            )
+            .where(TaskOperation.task_id == task_id)
+        )
+        task_operation = result.scalar_one_or_none()
+        if not task_operation:
+            return None
+
+        return TaskParticipantsResponse(
+            accessed_users=[
+                TaskParticipantUser(
+                    id=user.id,
+                    first_name=user.first_name,
+                    last_name=user.last_name,
+                    login=user.login,
+                )
+                for user in task_operation.accessed_users
+            ],
+            executors=[
+                TaskParticipantUser(
+                    id=user.id,
+                    first_name=user.first_name,
+                    last_name=user.last_name,
+                    login=user.login,
+                )
+                for user in task_operation.executors
+            ],
+        )
 
     async def delete(self, task_id: int) -> bool:
         task = await self.get_by_id(task_id)
@@ -138,20 +263,41 @@ class TaskService:
         if user_id not in [u.id for u in task_operation.accessed_users]:
             return None
 
-        user = await self.db.get(User, user_id)
+        user_result = await self.db.execute(
+            select(User).options(selectinload(User.position)).where(User.id == user_id)
+        )
+        user = user_result.scalar_one_or_none()
         if not user:
             return None
 
-        if task.task_type == TaskType.GROUP and user.role != Role.HEAD:
+        is_group_head = user.role == Role.HEAD or bool(user.position and user.position.head_of_group)
+        if task.task_type == TaskType.GROUP and not is_group_head:
             return None
 
         task.task_step = TaskStep.IN_PROGRESS
         task_operation.executors.append(user)
 
         if task.task_type == TaskType.GROUP:
-            for executor_id in executors_list or []:
-                executor = await self.db.get(User, executor_id)
-                if executor:
+            candidate_ids = list({uid for uid in (executors_list or []) if uid != user_id})
+            if candidate_ids:
+                users_result = await self.db.execute(
+                    select(User).where(
+                        User.id.in_(candidate_ids),
+                        User.company_id == task.company_id,
+                    )
+                )
+                brigade_users = list(users_result.scalars().all())
+                if len(brigade_users) != len(candidate_ids):
+                    return None
+            else:
+                brigade_users = []
+
+            full_group_size = 1 + len(brigade_users)
+            if task.group_size_limit is not None and full_group_size > task.group_size_limit:
+                return None
+
+            for executor in brigade_users:
+                if executor.id not in [u.id for u in task_operation.executors]:
                     task_operation.executors.append(executor)
 
         await self.db.flush()
@@ -182,8 +328,12 @@ class TaskService:
             return None
 
         if task.task_type == TaskType.GROUP:
-            user = await self.db.get(User, user_id)
-            if not user or user.role != Role.HEAD:
+            user_result = await self.db.execute(
+                select(User).options(selectinload(User.position)).where(User.id == user_id)
+            )
+            user = user_result.scalar_one_or_none()
+            is_group_head = bool(user and (user.role == Role.HEAD or (user.position and user.position.head_of_group)))
+            if not is_group_head:
                 return None
 
         task.task_step = TaskStep.COMPLETED
@@ -212,12 +362,18 @@ class TaskService:
         if not task_operation:
             return None
 
+        payouts = self._build_executor_payouts(task, task_operation.executors)
         for executor in task_operation.executors:
-            await points_calculation_service.calculate_and_save(task, user_id=executor.id)  # type: ignore
+            payout = payouts.get(executor.id, 0)
+            await points_calculation_service.calculate_and_save(
+                task,
+                user_id=executor.id,  # type: ignore
+                earned_amount=payout,
+            )
             if executor.bonus is None:
-                executor.bonus = task.payment
+                executor.bonus = payout
             else:
-                executor.bonus += task.payment
+                executor.bonus += payout
 
 
         task.task_step = TaskStep.VERIFIED
@@ -228,6 +384,51 @@ class TaskService:
         await self.db.refresh(task)
         logger.info("Task verified: task_id=%s", task_id)
         return True
+
+    @staticmethod
+    def _build_executor_payouts(task: Task, executors_list: list[User]) -> dict[int, int]:
+        if not executors_list:
+            return {}
+
+        total = int(task.payment or 0)
+        count = len(executors_list)
+        payouts: dict[int, int] = {}
+
+        if task.task_type != TaskType.GROUP:
+            per = total // count
+            remainder = total - (per * count)
+            for index, user in enumerate(executors_list):
+                payouts[user.id] = per + (1 if index < remainder else 0)
+            return payouts
+
+        if count == 1:
+            payouts[executors_list[0].id] = total
+            return payouts
+
+        head_user = executors_list[0]
+        if task.head_payment is None:
+            per = total // count
+            remainder = total - (per * count)
+            for index, user in enumerate(executors_list):
+                payouts[user.id] = per + (1 if index < remainder else 0)
+            return payouts
+
+        head_amount = int(task.head_payment)
+        payouts[head_user.id] = head_amount
+
+        rest_total = total - head_amount
+        members = executors_list[1:]
+        members_count = len(members)
+        if members_count <= 0:
+            payouts[head_user.id] = total
+            return payouts
+
+        per_member = rest_total // members_count
+        remainder = rest_total - (per_member * members_count)
+        for index, user in enumerate(members):
+            payouts[user.id] = per_member + (1 if index < remainder else 0)
+
+        return payouts
 
     async def reject_task(self, task_id: int) -> Optional[bool]:
         task = await self.get_by_id(task_id)

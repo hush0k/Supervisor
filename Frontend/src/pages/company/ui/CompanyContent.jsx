@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { BsBuildingFill } from 'react-icons/bs'
 import { useCompanyOverview } from '@/features/company/useCompanyOverview'
+import { useCompanyPriorityTasks } from '@/features/tasks/useCompanyPriorityTasks'
 import { DashboardContent } from '@/pages/dashboard/ui/DashboardContent'
 import { DashboardPeriodSelector } from '@/pages/dashboard/ui/DashboardPeriodSelector'
 import { CompanyKPIGrid } from '@/pages/company/ui/CompanyKPIGrid'
 import { CompanyTasksChart } from '@/pages/company/ui/CompanyTasksChart'
 import { CompanyDistributionPanel } from '@/pages/company/ui/CompanyDistributionPanel'
 import { CompanyCompensationChart } from '@/pages/company/ui/CompanyCompensationChart'
+import { CompanyFinanceSummary } from '@/pages/company/ui/CompanyFinanceSummary'
+import { CompanyPositionsPanel } from '@/pages/company/ui/CompanyPositionsPanel'
+import { PriorityTasksCarousel } from '@/shared/ui/PriorityTasksCarousel'
 
 function SectionCard({ title, children, action }) {
     return (
@@ -55,6 +59,10 @@ function CompanyFallbackState() {
 export function CompanyContent({ fallbackToUserDashboard = true }) {
     const [period, setPeriod] = useState(30)
     const { data, isLoading, isError } = useCompanyOverview(period)
+    const {
+        data: priorityTasks = [],
+        isLoading: isPriorityTasksLoading,
+    } = useCompanyPriorityTasks()
 
     if (isLoading) return <Skeleton />
 
@@ -85,6 +93,17 @@ export function CompanyContent({ fallbackToUserDashboard = true }) {
 
             <div className="flex flex-col gap-5 p-6">
                 <CompanyKPIGrid data={data} />
+
+                <PriorityTasksCarousel
+                    tasks={priorityTasks}
+                    isLoading={isPriorityTasksLoading}
+                    title="Приоритетные задачи компании"
+                    subtitle="Максимум 10 задач: критичные + дедлайн, затем дедлайн, затем критичные"
+                />
+
+                <SectionCard title="Финансовая сводка">
+                    <CompanyFinanceSummary data={data} />
+                </SectionCard>
 
                 <SectionCard title="Динамика зарплат и бонусов">
                     <CompanyCompensationChart data={data.monthly_compensation_stats} />
@@ -124,6 +143,10 @@ export function CompanyContent({ fallbackToUserDashboard = true }) {
                         positionDistribution={data.position_distribution}
                         employeesCount={data.employees_count}
                     />
+                </SectionCard>
+
+                <SectionCard title="Должности и бригадиры">
+                    <CompanyPositionsPanel />
                 </SectionCard>
             </div>
         </div>

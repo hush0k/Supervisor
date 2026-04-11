@@ -1,5 +1,6 @@
 import { useLeaderBoard } from '@/features/leaderboard/useLeaderBoard'
 import { MdLeaderboard } from 'react-icons/md'
+import { useNavigate } from 'react-router-dom'
 
 const MEDAL = { 1: '🥇', 2: '🥈', 3: '🥉' }
 
@@ -17,6 +18,7 @@ function getInitials(first, last) {
 }
 
 export function LeaderBoard() {
+    const navigate = useNavigate()
     const { data, isLoading, isError } = useLeaderBoard({ sort_field: 'total_points', sort_order: 'desc', limit: 10 })
 
     if (isLoading) {
@@ -59,7 +61,8 @@ export function LeaderBoard() {
             {data.map((entry) => (
                 <div
                     key={entry.user_id}
-                    className="flex items-center gap-3 px-4 py-2 hover:bg-accent transition-colors"
+                    className="flex items-center gap-3 px-4 py-2 hover:bg-accent transition-colors cursor-pointer"
+                    onClick={() => navigate(`/profile/${entry.user_id}`)}
                 >
                     <span className="w-5 text-center text-sm shrink-0">
                         {MEDAL[entry.rank_position] ?? (

@@ -35,14 +35,14 @@ class PointsCalculationService:
             return 10 ** (length - 3)
 
     async def calculate_and_save(
-        self, task: Task, user_id: int
+        self, task: Task, user_id: int, earned_amount: int
     ) -> TaskPointsHistoryResponse:
         difficulty_service = DifficultyConfigService(self.db)
         task_history_service = TaskPointsHistoryService(self.db)
-        difficulty_multiplier = await difficulty_service.get_with_difficulty_level(task.company_id, task.payment)  # type: ignore
+        difficulty_multiplier = await difficulty_service.get_with_difficulty_level(task.company_id, earned_amount)  # type: ignore
         delay = (task.completed_at - task.deadline).days
         deadline_multiplier = self.deadline_multiplier(delay)
-        raw_points = task.payment * difficulty_multiplier * deadline_multiplier
+        raw_points = earned_amount * difficulty_multiplier * deadline_multiplier
         devisor = self.get_devisor(raw_points)
         points = round(raw_points / devisor)
         task_in = TaskPointsHistoryCreate(
@@ -56,5 +56,6 @@ class PointsCalculationService:
             deadline_multiplier=deadline_multiplier,
             raw_points=raw_points,
             points=points,
+            earned_amount=earned_amount,
         )
         return await task_history_service.create(task_in)
