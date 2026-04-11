@@ -60,8 +60,9 @@ async def get_all_companies(
 async def get_my_company_overview(
     service: ServiceDep,
     current_user: Annotated[User, Depends(get_current_user)],
+    days: int = Query(30, ge=7, le=365),
 ) -> CompanyOverviewResponse:
-    company_overview = await service.get_my_company_overview(current_user.id)
+    company_overview = await service.get_my_company_overview(current_user.id, days=days)
     if not company_overview:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, detail="Компания пользователя не найдена"

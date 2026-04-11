@@ -9,6 +9,6 @@ export function useLeaderBoard(filters = {}) {
         queryKey: ['leaderboard', companyId, filters],
         queryFn: () => leaderboardApi.getLeaderBoard(companyId, filters),
         enabled: !!companyId,
-        staleTime: 1000 * 60 * 5
+        staleTime: 1000 * 15,
     })
 }

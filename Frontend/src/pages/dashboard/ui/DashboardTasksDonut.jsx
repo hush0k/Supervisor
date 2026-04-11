@@ -1,91 +1,109 @@
 const SEGMENTS = [
     { key: 'verified',    label: 'Подтверждено', color: '#10b981' },
-    { key: 'in_progress', label: 'В процессе',   color: '#f59e0b' },
+    { key: 'in_progress', label: 'В процессе',   color: '#3b82f6' },
     { key: 'failed',      label: 'Отклонено',    color: '#ef4444' },
 ]
 
 function getValues(data) {
     return {
-        verified:    data.tasks_verified ?? 0,
+        verified:    data.tasks_verified   ?? 0,
         in_progress: data.tasks_in_progress ?? 0,
-        failed:      0,
+        failed:      data.tasks_failed     ?? 0,
     }
 }
 
-function polarToXY(cx, cy, r, angleDeg) {
-    const rad = (angleDeg - 90) * (Math.PI / 180)
-    return [cx + r * Math.cos(rad), cy + r * Math.sin(rad)]
-}
-
-function arcPath(cx, cy, r, startAngle, endAngle) {
-    const [sx, sy] = polarToXY(cx, cy, r, startAngle)
-    const [ex, ey] = polarToXY(cx, cy, r, endAngle)
-    const large = endAngle - startAngle > 180 ? 1 : 0
-    return `M ${sx} ${sy} A ${r} ${r} 0 ${large} 1 ${ex} ${ey}`
-}
+const SIZE   = 188
+const STROKE = 20
+const GAP    = 4
+const RADIUS = (SIZE - STROKE) / 2
+const CIRC   = 2 * Math.PI * RADIUS
+const CENTER = SIZE / 2
 
 export function DashboardTasksDonut({ data }) {
-    const vals = getValues(data)
-    const total = Object.values(vals).reduce((a, b) => a + b, 0)
+    const vals     = getValues(data)
+    const total    = Object.values(vals).reduce((a, b) => a + b, 0)
+    const safeTot  = Math.max(total, 1)
 
-    if (total === 0) {
-        return (
-            <div className="h-48 flex items-center justify-center text-gray-400 text-sm">
-                Нет завершённых задач
-            </div>
-        )
-    }
-
-    const cx = 80
-    const cy = 80
-    const R = 62
-    const rInner = 38
-
-    let currentAngle = 0
-    const arcs = SEGMENTS.map(seg => {
-        const val = vals[seg.key]
-        const angle = (val / total) * 360
-        const start = currentAngle
-        const end = currentAngle + angle
-        currentAngle = end
-        return { ...seg, val, angle, start, end }
-    }).filter(s => s.val > 0)
+    let offset = 0
+    const rings = SEGMENTS.map(seg => {
+        const value  = vals[seg.key]
+        const share  = value / safeTot
+        const length = Math.max(CIRC * share - (value > 0 ? GAP : 0), 0)
+        const ring   = { ...seg, value, length, offset }
+        offset += CIRC * share
+        return ring
+    })
 
     return (
-        <div className="flex items-center gap-4">
-            <svg viewBox="0 0 160 160" className="shrink-0" style={{ width: 140, height: 140 }}>
-                {arcs.map((arc, i) => (
-                    <path
-                        key={i}
-                        d={arcPath(cx, cy, R, arc.start, arc.end)}
-                        fill="none"
-                        stroke={arc.color}
-                        strokeWidth={rInner}
-                        strokeLinecap="butt"
+        <div className="flex flex-col gap-5 h-full justify-between py-1">
+            {/* Donut */}
+            <div className="flex justify-center">
+                <svg viewBox={`0 0 ${SIZE} ${SIZE}`} width={SIZE} height={SIZE}>
+                    {/* Track */}
+                    <circle
+                        cx={CENTER} cy={CENTER} r={RADIUS}
+                        fill="none" stroke="#e2e8f0" strokeWidth={STROKE}
                     />
-                ))}
-                <circle cx={cx} cy={cy} r={rInner - 1} fill="white" />
-                <text x={cx} y={cy - 6} textAnchor="middle" fontSize="18" fontWeight="700" fill="#111">
-                    {total}
-                </text>
-                <text x={cx} y={cy + 12} textAnchor="middle" fontSize="10" fill="#9ca3af">
-                    задач
-                </text>
-            </svg>
+                    {/* Segments */}
+                    {rings.filter(r => r.value > 0).map(ring => (
+                        <circle
+                            key={ring.key}
+                            cx={CENTER} cy={CENTER} r={RADIUS}
+                            fill="none"
+                            stroke={ring.color}
+                            strokeWidth={STROKE}
+                            strokeLinecap="butt"
+                            strokeDasharray={`${ring.length} ${Math.max(CIRC - ring.length, 0)}`}
+                            strokeDashoffset={-ring.offset}
+                            transform={`rotate(-90 ${CENTER} ${CENTER})`}
+                        />
+                    ))}
+                    {/* Center text */}
+                    <text x={CENTER} y={CENTER - 8} textAnchor="middle" fontSize="34" fontWeight="800" fill="#0f172a">
+                        {total}
+                    </text>
+                    <text x={CENTER} y={CENTER + 13} textAnchor="middle" fontSize="11" fill="#94a3b8" letterSpacing="0.5">
+                        задач
+                    </text>
+                </svg>
+            </div>
 
-            <div className="flex flex-col gap-2">
+            {/* Legend */}
+            <div className="flex flex-col gap-3">
                 {SEGMENTS.map(seg => {
-                    const val = vals[seg.key]
-                    const pct = total > 0 ? Math.round((val / total) * 100) : 0
+                    const value = vals[seg.key]
+                    const pct   = Math.round((value / safeTot) * 100)
                     return (
-                        <div key={seg.key} className="flex items-center gap-2 text-sm">
-                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: seg.color }} />
-                            <span className="text-gray-600 text-xs">{seg.label}</span>
-                            <span className="font-bold text-xs ml-auto pl-4">{val} <span className="text-gray-400 font-normal">({pct}%)</span></span>
+                        <div key={seg.key}>
+                            <div className="flex items-center justify-between text-xs mb-1.5">
+                                <div className="flex items-center gap-2">
+                                    <span
+                                        className="w-2 h-2 shrink-0"
+                                        style={{ background: seg.color }}
+                                    />
+                                    <span className="text-gray-600">{seg.label}</span>
+                                </div>
+                                <div className="flex items-center gap-2 tabular-nums">
+                                    <span className="font-semibold text-gray-800">{value}</span>
+                                    <span className="text-gray-400 w-9 text-right">{pct}%</span>
+                                </div>
+                            </div>
+                            <div className="h-1.5 bg-gray-100">
+                                <div
+                                    className="h-full transition-all duration-700"
+                                    style={{ width: `${pct}%`, background: seg.color }}
+                                />
+                            </div>
                         </div>
                     )
                 })}
             </div>
+
+            {total === 0 && (
+                <p className="text-xs text-gray-400 text-center">
+                    Пока нет задач за выбранный период
+                </p>
+            )}
         </div>
     )
 }

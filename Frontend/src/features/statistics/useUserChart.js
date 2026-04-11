@@ -9,6 +9,6 @@ export function useUserChart(metric = 'total_points') {
         queryKey: ['user-chart', userId, metric],
         queryFn: () => statisticsApi.getChart(userId, metric),
         enabled: !!userId,
-        staleTime: 1000 * 60 * 5,
+        staleTime: 1000 * 15,
     })
 }

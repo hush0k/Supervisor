@@ -289,35 +289,22 @@ class UserStatisticsService:
             .subquery()
         )
 
-        ranked_subq = (
-            select(
-                UserStatistic.user_id,
-                func.row_number().over(order_by=[UserStatistic.total_points.desc(), UserStatistic.percent_of_success.desc()]).label("rank"),
+        leaderboard_position = None
+        if user.company_id is not None:
+            leaderboard = await self.get_leaderboard(
+                company_id=user.company_id,
+                sort_field="total_points",
+                sort_order="desc",
+                min_success_rate=0.0,
+                position_id=None,
+                limit=1000,
             )
-            .where(
-                UserStatistic.period_type == PeriodType.MONTH,
-                UserStatistic.period_date >= first_day_of_month,
-                UserStatistic.user_id.in_(
-                    select(User.id).where(
-                        User.company_id == user.company_id,
-                        User.id != select(Company.owner_id).where(Company.id == user.company_id).scalar_subquery(),
-                    )
-                ),
-                )
-            .subquery()
-        )
+            position_map = {entry.user_id: entry.rank_position for entry in leaderboard}
+            leaderboard_position = position_map.get(user_id)
 
-        misc = await self.db.execute(
-            select(
-                select(ranked_subq.c.rank)
-                .where(ranked_subq.c.user_id == user_id) # type: ignore
-                .scalar_subquery()
-                .label("leaderboard_position"),
-
-                func.coalesce(func.avg(team_size_subq.c.size), 0.0).label("avg_team_size"),  # ← было ranked_subq
-            )
+        avg_team_size = await self.db.scalar(
+            select(func.coalesce(func.avg(team_size_subq.c.size), 0.0))
         )
-        m = misc.one()
 
         total = (stats.verified or 0) + (stats.failed or 0)
         total_group = (stats.group_verified or 0) + (stats.group_failed or 0)
@@ -326,13 +313,13 @@ class UserStatisticsService:
             tasks_in_progress=stats.in_progress or 0,
             current_month_points=pa.current_month_points,
             last_month_points=pa.last_month_points,
-            leaderboard_position=m.leaderboard_position,
+            leaderboard_position=leaderboard_position,
             tasks_available=pa.tasks_available or 0,
             tasks_verified=stats.verified or 0,
             profit_for_period=stats.profit,
             success_rate=(stats.verified / total * 100) if total > 0 else 0.0,
             group_tasks_completed=stats.group_verified or 0,
-            avg_team_size=float(m.avg_team_size),
+            avg_team_size=float(avg_team_size or 0.0),
             group_success_rate=(stats.group_verified / total_group * 100) if total_group > 0 else 0.0,
         )
 
@@ -406,7 +393,8 @@ class UserStatisticsService:
             0.0,
         )
 
-        sort_col = points_subq.c.total_points if sort_field == "total_points" else success_rate_expr
+        points_order_col = func.coalesce(points_subq.c.total_points, 0)
+        sort_col = points_order_col if sort_field == "total_points" else success_rate_expr
         order_expr = sort_col.asc() if sort_order == "asc" else sort_col.desc()
 
         user_filters = [
@@ -428,7 +416,7 @@ class UserStatisticsService:
             .outerjoin(points_subq, points_subq.c.user_id == User.id)
             .outerjoin(success_subq, success_subq.c.user_id == User.id)
             .where(*user_filters)
-            .order_by(order_expr)
+            .order_by(order_expr, User.id.asc())
             .limit(limit)
         )).all()
 
@@ -445,8 +433,6 @@ class UserStatisticsService:
             for idx, row in enumerate(rows)
             if float(row.success_rate or 0.0) >= min_success_rate
         ]
-
-
 
 
 

@@ -32,9 +32,21 @@ ServiceDep = Annotated[UserService, Depends(get_user_service)]
     "/create", response_model=UserResponse, status_code=http_status.HTTP_201_CREATED
 )
 async def create_user_endpoint(
-    user_in: UserCreate, service: ServiceDep
+    user_in: UserCreate,
+    service: ServiceDep,
+    current_user: Annotated[User, Depends(get_current_user)],
 ) -> UserResponse:
-    return await service.create(user_in)
+    payload = user_in.model_dump()
+
+    if payload.get("company_id") is None:
+        if current_user.company_id is None:
+            raise HTTPException(
+                status_code=http_status.HTTP_400_BAD_REQUEST,
+                detail="Нельзя создать сотрудника без компании",
+            )
+        payload["company_id"] = current_user.company_id
+
+    return await service.create(UserCreate(**payload))
 
 
 @router.get("/my-employees", response_model=list[UserResponse])
@@ -168,4 +180,3 @@ async def delete_user(user_id: int, service: ServiceDep):
         raise HTTPException(
             status_code=http_status.HTTP_404_NOT_FOUND, detail="Пользователь не найден"
         )
-

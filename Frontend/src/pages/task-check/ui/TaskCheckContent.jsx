@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { tasksApi } from '@/shared/api/tasks'
 import { Button } from '@/shared/ui/button'
 import { Input } from '@/shared/ui/input'
@@ -76,9 +77,11 @@ function StatCard({ icon, label, value, accent }) {
 }
 
 export function TaskCheckContent() {
+    const queryClient = useQueryClient()
     const [tasks, setTasks]           = useState([])
     const [loading, setLoading]       = useState(true)
     const [fetchError, setFetchError] = useState('')
+    const [actionError, setActionError] = useState('')
 
     const [search, setSearch]             = useState('')
     const [typeFilter, setTypeFilter]     = useState('ALL')
@@ -132,12 +135,21 @@ export function TaskCheckContent() {
         if (!verifyTarget) return
         setActing(true)
         try {
+            setActionError('')
             await tasksApi.verify(verifyTarget.id)
             setTasks(prev => prev.filter(t => t.id !== verifyTarget.id))
             setVerifyTarget(null)
             setDetailTask(null)
-        } catch {
-            // stay in dialog
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['leaderboard'] }),
+                queryClient.invalidateQueries({ queryKey: ['user-dashboard'] }),
+                queryClient.invalidateQueries({ queryKey: ['user-chart'] }),
+                queryClient.invalidateQueries({ queryKey: ['user-tasks-board'] }),
+                queryClient.invalidateQueries({ queryKey: ['user-active-tasks'] }),
+            ])
+        } catch (e) {
+            const detail = e.response?.data?.detail
+            setActionError(detail || 'Не удалось принять задачу')
         } finally {
             setActing(false)
         }
@@ -147,12 +159,21 @@ export function TaskCheckContent() {
         if (!rejectTarget) return
         setActing(true)
         try {
+            setActionError('')
             await tasksApi.reject(rejectTarget.id)
             setTasks(prev => prev.filter(t => t.id !== rejectTarget.id))
             setRejectTarget(null)
             setDetailTask(null)
-        } catch {
-            // stay in dialog
+            await Promise.all([
+                queryClient.invalidateQueries({ queryKey: ['leaderboard'] }),
+                queryClient.invalidateQueries({ queryKey: ['user-dashboard'] }),
+                queryClient.invalidateQueries({ queryKey: ['user-chart'] }),
+                queryClient.invalidateQueries({ queryKey: ['user-tasks-board'] }),
+                queryClient.invalidateQueries({ queryKey: ['user-active-tasks'] }),
+            ])
+        } catch (e) {
+            const detail = e.response?.data?.detail
+            setActionError(detail || 'Не удалось отклонить задачу')
         } finally {
             setActing(false)
         }
@@ -173,6 +194,11 @@ export function TaskCheckContent() {
             </div>
 
             <div className="flex flex-col gap-5 p-6">
+                {actionError && (
+                    <div className="bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                        {actionError}
+                    </div>
+                )}
 
                 {/* Stats */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

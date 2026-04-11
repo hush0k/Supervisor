@@ -1,14 +1,16 @@
-function Bar({ label, value, color, max }) {
-    const pct = max > 0 ? (value / max) * 100 : 0
+function Bar({ label, value, color }) {
+    const pct = Math.min(Math.max(value, 0), 100)
     return (
-        <div className="flex flex-col gap-1.5">
-            <div className="flex items-center justify-between text-xs">
-                <span className="text-gray-600 font-medium">{label}</span>
-                <span className="font-bold" style={{ color }}>{value}%</span>
+        <div className="flex flex-col gap-2">
+            <div className="flex items-end justify-between gap-2">
+                <span className="text-sm font-medium text-gray-600">{label}</span>
+                <span className="text-2xl font-extrabold tabular-nums leading-none" style={{ color }}>
+                    {value}<span className="text-base font-semibold ml-0.5">%</span>
+                </span>
             </div>
-            <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
+            <div className="h-2.5 bg-gray-100 overflow-hidden">
                 <div
-                    className="h-full rounded-full transition-all duration-500"
+                    className="h-full transition-all duration-700"
                     style={{ width: `${pct}%`, background: color }}
                 />
             </div>
@@ -19,12 +21,11 @@ function Bar({ label, value, color, max }) {
 export function DashboardSuccessBar({ data }) {
     const solo  = Math.round(data.success_rate)
     const group = Math.round(data.group_success_rate)
-    const max   = Math.max(solo, group, 1)
 
     return (
-        <div className="flex flex-col gap-4">
-            <Bar label="Соло задачи"    value={solo}  color="#10b981" max={max} />
-            <Bar label="Групповые задачи" value={group} color="#6366f1" max={max} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            <Bar label="Соло задачи"      value={solo}  color="#10b981" />
+            <Bar label="Групповые задачи" value={group} color="#3b82f6" />
         </div>
     )
 }

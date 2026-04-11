@@ -64,6 +64,14 @@ class CompanyMonthlyTaskStat(BaseModel):
     completed: int
 
 
+class CompanyMonthlyCompensationStat(BaseModel):
+    month: str
+    employees_count: int
+    payroll_fund: int
+    avg_salary: float
+    bonus_paid: int
+
+
 class CompanyOverviewResponse(BaseModel):
     company: CompanyResponse
     employees_count: int
@@ -80,3 +88,4 @@ class CompanyOverviewResponse(BaseModel):
     role_distribution: list[CompanyRoleStat]
     position_distribution: list[CompanyPositionStat]
     monthly_task_stats: list[CompanyMonthlyTaskStat]
+    monthly_compensation_stats: list[CompanyMonthlyCompensationStat]

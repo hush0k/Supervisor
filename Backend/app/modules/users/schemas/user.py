@@ -25,9 +25,9 @@ class UserBase(BaseModel):
     last_name: Annotated[str, Field(min_length=1, max_length=100)]
     date_of_birth: date
     salary: Annotated[int, Field(gt=0)]
-    position_id: Optional[int]
-    bonus: Optional[int]
-    company_id: Optional[int]
+    position_id: Optional[int] = None
+    bonus: Optional[int] = None
+    company_id: Optional[int] = None
 
 
 class UserCreate(UserBase):

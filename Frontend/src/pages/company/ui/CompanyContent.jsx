@@ -1,16 +1,19 @@
+import { useState } from 'react'
 import { BsBuildingFill } from 'react-icons/bs'
-import { FiBarChart2 } from 'react-icons/fi'
 import { useCompanyOverview } from '@/features/company/useCompanyOverview'
 import { DashboardContent } from '@/pages/dashboard/ui/DashboardContent'
+import { DashboardPeriodSelector } from '@/pages/dashboard/ui/DashboardPeriodSelector'
 import { CompanyKPIGrid } from '@/pages/company/ui/CompanyKPIGrid'
 import { CompanyTasksChart } from '@/pages/company/ui/CompanyTasksChart'
 import { CompanyDistributionPanel } from '@/pages/company/ui/CompanyDistributionPanel'
+import { CompanyCompensationChart } from '@/pages/company/ui/CompanyCompensationChart'
 
-function SectionCard({ title, children }) {
+function SectionCard({ title, children, action }) {
     return (
         <div className="bg-white border">
-            <div className="px-5 py-3 border-b bg-gray-50">
+            <div className="px-5 py-3 border-b bg-gray-50 flex items-center justify-between">
                 <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</p>
+                {action}
             </div>
             <div className="p-5">{children}</div>
         </div>
@@ -33,7 +36,8 @@ function hasCompanyStats(data) {
         data.tasks_total > 0 ||
         data.tasks_verified > 0 ||
         data.tasks_failed > 0 ||
-        data.monthly_task_stats.length > 0
+        (data.monthly_task_stats?.length ?? 0) > 0 ||
+        (data.monthly_compensation_stats?.length ?? 0) > 0
     )
 }
 
@@ -49,7 +53,8 @@ function CompanyFallbackState() {
 }
 
 export function CompanyContent({ fallbackToUserDashboard = true }) {
-    const { data, isLoading, isError } = useCompanyOverview()
+    const [period, setPeriod] = useState(30)
+    const { data, isLoading, isError } = useCompanyOverview(period)
 
     if (isLoading) return <Skeleton />
 
@@ -64,6 +69,7 @@ export function CompanyContent({ fallbackToUserDashboard = true }) {
 
     return (
         <div className="flex flex-col w-full min-h-full">
+            {/* Header */}
             <div className="bg-white border-b px-6 py-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="flex items-center gap-3">
                     <div className="flex items-center justify-center w-12 h-12 bg-primary text-white shrink-0">
@@ -74,17 +80,43 @@ export function CompanyContent({ fallbackToUserDashboard = true }) {
                         <p className="text-sm text-gray-500 mt-0.5">Полная статистика вашей компании</p>
                     </div>
                 </div>
-                <div className="text-sm text-gray-500">
-                    Дата основания: {new Date(data.company.date_established).toLocaleDateString('ru-RU')}
-                </div>
+                <DashboardPeriodSelector value={period} onChange={setPeriod} />
             </div>
 
             <div className="flex flex-col gap-5 p-6">
                 <CompanyKPIGrid data={data} />
 
-                <SectionCard title="Динамика выполнения задач по месяцам">
-                    <CompanyTasksChart data={data.monthly_task_stats} />
+                <SectionCard title="Динамика зарплат и бонусов">
+                    <CompanyCompensationChart data={data.monthly_compensation_stats} />
                 </SectionCard>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+                    <div className="lg:col-span-2">
+                        <SectionCard title="Динамика задач по периоду">
+                            <CompanyTasksChart data={data.monthly_task_stats} />
+                        </SectionCard>
+                    </div>
+                    <SectionCard title="О компании">
+                        <div className="flex flex-col gap-4">
+                            <div>
+                                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Основана</p>
+                                <p className="text-sm font-semibold text-gray-700">
+                                    {new Date(data.company.date_established).toLocaleDateString('ru-RU', { year: 'numeric', month: 'long', day: 'numeric' })}
+                                </p>
+                            </div>
+                            {data.company.description && (
+                                <div>
+                                    <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Описание</p>
+                                    <p className="text-sm text-gray-600 leading-relaxed">{data.company.description}</p>
+                                </div>
+                            )}
+                            <div>
+                                <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">Сотрудников</p>
+                                <p className="text-2xl font-extrabold text-gray-800">{data.employees_count}</p>
+                            </div>
+                        </div>
+                    </SectionCard>
+                </div>
 
                 <SectionCard title="Структура команды">
                     <CompanyDistributionPanel
@@ -93,13 +125,6 @@ export function CompanyContent({ fallbackToUserDashboard = true }) {
                         employeesCount={data.employees_count}
                     />
                 </SectionCard>
-
-                <div className="bg-white border p-5 flex items-start gap-3 text-sm text-gray-600">
-                    <FiBarChart2 size={18} className="text-primary mt-0.5 shrink-0" />
-                    <p>
-                        Описание: {data.company.description || 'Описание компании пока не заполнено.'}
-                    </p>
-                </div>
             </div>
         </div>
     )

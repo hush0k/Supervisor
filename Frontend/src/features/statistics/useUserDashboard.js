@@ -9,6 +9,6 @@ export function useUserDashboard(periodType = 30, enabled = true) {
         queryKey: ['user-dashboard', userId, periodType],
         queryFn: () => statisticsApi.getDashboard(userId, periodType),
         enabled: !!userId && enabled,
-        staleTime: 1000 * 60 * 2,
+        staleTime: 1000 * 15,
     })
 }

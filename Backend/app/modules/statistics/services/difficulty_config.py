@@ -1,12 +1,19 @@
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.core.logging import get_logger
 from app.modules.statistics.models.difficulty_config import DifficultyConfig
 from app.modules.statistics.schemas.difficulty_config import (
     DifficultyConfigCreate,
     DifficultyConfigResponse,
     DifficultyConfigUpdate,
 )
+
+logger = get_logger("difficulty-config")
+
+# Fallback thresholds for companies where config has not been created yet.
+DEFAULT_LOW_MAX = 100_000
+DEFAULT_MEDIUM_MAX = 300_000
 
 
 class DifficultyConfigService:
@@ -57,9 +64,26 @@ class DifficultyConfigService:
     async def get_with_difficulty_level(self, company_id: int, payment: int) -> float:
         config_data = await self.get_by_company_id(company_id)
 
-        if payment < config_data.low_max:
+        low_max = config_data.low_max if config_data else DEFAULT_LOW_MAX
+        medium_max = config_data.medium_max if config_data else DEFAULT_MEDIUM_MAX
+
+        if medium_max <= low_max:
+            logger.warning(
+                "DifficultyConfig invalid for company_id=%s (low_max=%s, medium_max=%s), using defaults",
+                company_id, low_max, medium_max,
+            )
+            low_max = DEFAULT_LOW_MAX
+            medium_max = DEFAULT_MEDIUM_MAX
+
+        if config_data is None:
+            logger.warning(
+                "DifficultyConfig not found for company_id=%s, using default thresholds (%s, %s)",
+                company_id, low_max, medium_max,
+            )
+
+        if payment < low_max:
             return 1.5
-        elif config_data.low_max <= payment < config_data.medium_max:
+        elif low_max <= payment < medium_max:
             return 1.8
         else:
             return 2.0

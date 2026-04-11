@@ -249,7 +249,6 @@ export function TeamContent() {
             salary:      Number(form.salary),
             bonus:       form.bonus ? Number(form.bonus) : null,
             position_id: form.position_id ? Number(form.position_id) : null,
-            company_id:  null,
         }
 
         try {
@@ -276,11 +275,7 @@ export function TeamContent() {
                 savedUser = await usersApi.deleteAvatar(savedUser.id)
             }
 
-            if (editTarget) {
-                setEmployees(prev => prev.map(e => e.id === savedUser.id ? savedUser : e))
-            } else {
-                setEmployees(prev => [...prev, savedUser])
-            }
+            await loadEmployees()
 
             setShowModal(false)
         } catch (err) {
@@ -297,7 +292,7 @@ export function TeamContent() {
         setDeleting(true)
         try {
             await usersApi.deleteUser(deleteTarget.id)
-            setEmployees(prev => prev.filter(e => e.id !== deleteTarget.id))
+            await loadEmployees()
             setDeleteTarget(null)
         } finally {
             setDeleting(false)

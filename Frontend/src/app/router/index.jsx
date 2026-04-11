@@ -9,6 +9,8 @@ import {TasksPage} from "@/pages/tasks/TasksPage.jsx";
 import {TaskCheckPage} from "@/pages/task-check/TaskCheckPage.jsx"
 import {LeaderboardPage} from "@/pages/leaderboard/LeaderboardPage.jsx";
 import {CompanyPage} from "@/pages/company/CompanyPage.jsx";
+import {UserTasksPage} from "@/pages/user-tasks/UserTasksPage.jsx";
+import {ActiveTasksPage} from "@/pages/active-tasks/ActiveTasksPage.jsx";
 
 function ProtectedRoute({ children }) {
     const { isAuthenticated } = useAuthStore()
@@ -85,6 +87,24 @@ export function AppRouter() {
                     element={
                         <RoleProtectedRoute allowedRoles={['admin', 'supervisor']}>
                             <TasksPage />
+                        </RoleProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/my-tasks"
+                    element={
+                        <RoleProtectedRoute allowedRoles={['user', 'head']}>
+                            <UserTasksPage />
+                        </RoleProtectedRoute>
+                    }
+                />
+
+                <Route
+                    path="/active-tasks"
+                    element={
+                        <RoleProtectedRoute allowedRoles={['user', 'head']}>
+                            <ActiveTasksPage />
                         </RoleProtectedRoute>
                     }
                 />

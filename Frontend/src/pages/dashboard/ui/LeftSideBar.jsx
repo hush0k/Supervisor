@@ -22,6 +22,8 @@ export function LeftSideBar() {
     ]
     const userItems = [
         { label: "Главная",          path: "/dashboard",  icon: <MdDashboard size={18} /> },
+        { label: "Мои задачи",       path: "/my-tasks",   icon: <BiTask size={18} /> },
+        { label: "Активные задачи",  path: "/active-tasks", icon: <AiFillControl size={18} /> },
         { label: "Таблица лидеров",  path: "/leaderboard",icon: <MdLeaderboard size={18} /> },
     ]
     const menuItems = isManager ? managerItems : userItems

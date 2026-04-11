@@ -1,19 +1,25 @@
 import { useState } from 'react'
 import { useAuthStore } from '@/entities/user/model/store'
 import { useUserDashboard } from '@/features/statistics/useUserDashboard'
+import { useDashboardTasks } from '@/features/tasks/useDashboardTasks'
 import { DashboardPeriodSelector } from './DashboardPeriodSelector'
 import { DashboardKPIGrid } from './DashboardKPIGrid'
 import { DashboardPointsChart } from './DashboardPointsChart'
 import { DashboardTasksDonut } from './DashboardTasksDonut'
 import { DashboardSuccessBar } from './DashboardSuccessBar'
+import { DashboardPriorityTasks } from './DashboardPriorityTasks'
+import { DashboardTaskPriorityChart } from './DashboardTaskPriorityChart'
+import { DashboardDeadlineChart } from './DashboardDeadlineChart'
+import { FiBarChart2 } from 'react-icons/fi'
 
-function SectionCard({ title, children }) {
+function SectionCard({ title, children, className = '', bodyClassName = '' }) {
     return (
-        <div className="bg-white border">
-            <div className="px-5 py-3 border-b bg-gray-50">
-                <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{title}</p>
+        <div className={`bg-white border flex flex-col ${className}`}>
+            <div className="px-5 py-3 border-b flex items-center gap-2">
+                <span className="w-0.5 h-3.5 bg-primary shrink-0" />
+                <p className="text-xs font-semibold text-gray-600 uppercase tracking-wider">{title}</p>
             </div>
-            <div className="p-5">{children}</div>
+            <div className={`p-5 flex-1 ${bodyClassName}`}>{children}</div>
         </div>
     )
 }
@@ -36,10 +42,38 @@ function KPISkeleton() {
     )
 }
 
+const EMPTY_DASHBOARD_DATA = {
+    tasks_in_progress: 0,
+    current_month_points: 0,
+    last_month_points: 0,
+    leaderboard_position: null,
+    tasks_available: 0,
+    tasks_verified: 0,
+    profit_for_period: 0,
+    success_rate: 0,
+    group_tasks_completed: 0,
+    avg_team_size: 0,
+    group_success_rate: 0,
+}
+
+function hasActivity(data) {
+    if (!data) return false
+    return (
+        data.tasks_verified > 0 ||
+        data.tasks_in_progress > 0 ||
+        data.current_month_points > 0 ||
+        data.tasks_available > 0 ||
+        data.profit_for_period > 0
+    )
+}
+
 export function DashboardContent() {
     const [period, setPeriod] = useState(30)
     const user = useAuthStore(s => s.user)
-    const { data, isLoading } = useUserDashboard(period)
+    const { data, isLoading, isError } = useUserDashboard(period)
+    const { data: tasks = [], isLoading: tasksLoading } = useDashboardTasks()
+    const dashboardData = data ?? EMPTY_DASHBOARD_DATA
+    const userHasActivity = hasActivity(data)
 
     return (
         <div className="flex flex-col w-full min-h-full">
@@ -54,29 +88,65 @@ export function DashboardContent() {
             </div>
 
             <div className="flex flex-col gap-5 p-6">
+                <DashboardPriorityTasks tasks={tasks} isLoading={tasksLoading} />
+
                 {isLoading ? (
                     <KPISkeleton />
-                ) : data ? (
+                ) : (
                     <>
-                        <DashboardKPIGrid data={data} />
+                        {isError && (
+                            <div className="bg-red-50 border border-red-200 px-4 py-3 text-sm text-red-700">
+                                Не удалось загрузить часть статистики. Показаны базовые значения.
+                            </div>
+                        )}
+
+                        {!userHasActivity && (
+                            <div className="bg-white border p-5 flex items-start gap-3 text-sm text-gray-600">
+                                <FiBarChart2 size={18} className="text-primary mt-0.5 shrink-0" />
+                                <p>
+                                    Здесь будет ваша личная статистика: очки, прогресс по задачам и место в рейтинге.
+                                    Возьмите первую задачу, чтобы начать наполнять дашборд.
+                                </p>
+                            </div>
+                        )}
+
+                        <DashboardKPIGrid data={dashboardData} />
 
                         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
                             <div className="lg:col-span-2">
-                                <SectionCard title="Динамика очков по месяцам">
+                                <SectionCard
+                                    title="Динамика очков по месяцам"
+                                    className="h-full lg:min-h-[470px]"
+                                    bodyClassName="h-full"
+                                >
                                     <DashboardPointsChart />
                                 </SectionCard>
                             </div>
 
-                            <SectionCard title="Задачи">
-                                <DashboardTasksDonut data={data} />
+                            <SectionCard
+                                title="Задачи"
+                                className="h-full lg:min-h-[470px]"
+                                bodyClassName="h-full"
+                            >
+                                <DashboardTasksDonut data={dashboardData} />
                             </SectionCard>
                         </div>
 
                         <SectionCard title="Процент успешности">
-                            <DashboardSuccessBar data={data} />
+                            <DashboardSuccessBar data={dashboardData} />
                         </SectionCard>
+
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+                            <SectionCard title="Распределение задач по приоритетам" className="min-h-64">
+                                <DashboardTaskPriorityChart tasks={tasks} />
+                            </SectionCard>
+
+                            <SectionCard title="Нагрузка по дедлайнам" className="min-h-64">
+                                <DashboardDeadlineChart tasks={tasks} />
+                            </SectionCard>
+                        </div>
                     </>
-                ) : null}
+                )}
             </div>
         </div>
     )
